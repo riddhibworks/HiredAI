@@ -2,9 +2,9 @@ spring:
   application:
     name: hiredai-backend
   profiles:
-    active: dev
+    active: ${SPRING_PROFILES_ACTIVE:dev}
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:hiredai}
+    url: ${DATABASE_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:hiredai}}
     username: ${DB_USER:hiredai}
     password: ${DB_PASSWORD:hiredai}
   jpa:
@@ -18,6 +18,9 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      ssl:
+        enabled: ${REDIS_SSL:false}
   servlet:
     multipart:
       max-file-size: 10MB
@@ -50,3 +53,4 @@ app:
 logging:
   level:
     com.hiredai: INFO
+
