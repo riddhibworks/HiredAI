@@ -74,7 +74,6 @@ export default function JobFeedPage() {
 
   const [location, setLocation] = useState(initialLocation);
   const [platform, setPlatform] = useState('');
-  const [minMatchScore, setMinMatchScore] = useState<number | ''>('');
   const [sort, setSort] = useState('relevance');
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
@@ -101,7 +100,6 @@ export default function JobFeedPage() {
     keywords.length > 0 || !!keywordInput.trim(),
     !!location.trim(),
     !!platform,
-    minMatchScore !== '',
     sort !== 'relevance',
   ].filter(Boolean).length;
 
@@ -114,7 +112,6 @@ export default function JobFeedPage() {
         keyword: searchKeyword || undefined,
         location: location || undefined,
         platform: platform || undefined,
-        minMatchScore: minMatchScore !== '' ? Number(minMatchScore) : undefined,
         sort,
         page: 0,
         size: PAGE_SIZE,
@@ -126,7 +123,7 @@ export default function JobFeedPage() {
       })
       .catch(() => setError('Failed to load jobs from feed'))
       .finally(() => setLoading(false));
-  }, [getCombinedKeywordString, location, platform, minMatchScore, sort]);
+  }, [getCombinedKeywordString, location, platform, sort]);
 
   const loadMore = () => {
     const nextPage = page + 1;
@@ -138,7 +135,6 @@ export default function JobFeedPage() {
         keyword: searchKeyword || undefined,
         location: location || undefined,
         platform: platform || undefined,
-        minMatchScore: minMatchScore !== '' ? Number(minMatchScore) : undefined,
         sort,
         page: nextPage,
         size: PAGE_SIZE,
@@ -158,7 +154,7 @@ export default function JobFeedPage() {
 
   useEffect(() => {
     load();
-  }, [platform, minMatchScore, sort]);
+  }, [platform, sort]);
 
   // Keyword chip input handlers
   const handleKeywordKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -207,7 +203,6 @@ export default function JobFeedPage() {
     setKeywordInput('');
     setLocation('');
     setPlatform('');
-    setMinMatchScore('');
     setSort('relevance');
     setSearchParams({});
     if (mobileFilterOpen) setMobileFilterOpen(false);
@@ -476,14 +471,6 @@ export default function JobFeedPage() {
                   sx={{ bgcolor: '#FFD9E4', color: '#A31346', fontWeight: 600, flexShrink: 0, outline: 'none !important' }}
                 />
               )}
-              {minMatchScore !== '' && (
-                <Chip
-                  label={`Score ≥ ${minMatchScore}%`}
-                  size="small"
-                  onDelete={() => setMinMatchScore('')}
-                  sx={{ bgcolor: '#FFD9E4', color: '#A31346', fontWeight: 600, flexShrink: 0, outline: 'none !important' }}
-                />
-              )}
               {sort !== 'relevance' && (
                 <Chip
                   label={`Sort: ${sort}`}
@@ -602,30 +589,6 @@ export default function JobFeedPage() {
               <TextField
                 fullWidth
                 select
-                label="Minimum match score"
-                value={minMatchScore}
-                onChange={(e) => setMinMatchScore(e.target.value === '' ? '' : Number(e.target.value))}
-                size="small"
-                sx={{
-                  outline: 'none !important',
-                  '& .MuiOutlinedInput-root': {
-                    outline: 'none !important',
-                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                      borderColor: '#E8336D',
-                      borderWidth: '1.5px',
-                    },
-                  },
-                }}
-              >
-                <MenuItem value="">Any match score</MenuItem>
-                <MenuItem value={50}>50%+ Match</MenuItem>
-                <MenuItem value={70}>70%+ High Match</MenuItem>
-                <MenuItem value={85}>85%+ Best Match</MenuItem>
-              </TextField>
-
-              <TextField
-                fullWidth
-                select
                 label="Sort order"
                 value={sort}
                 onChange={(e) => setSort(e.target.value)}
@@ -641,7 +604,7 @@ export default function JobFeedPage() {
                   },
                 }}
               >
-                <MenuItem value="relevance">Relevance</MenuItem>
+                <MenuItem value="relevance">Match Score (Highest first)</MenuItem>
                 <MenuItem value="date">Date posted</MenuItem>
                 <MenuItem value="salary">Salary</MenuItem>
               </TextField>
@@ -795,42 +758,6 @@ export default function JobFeedPage() {
               <TextField
                 fullWidth
                 select
-                label="Match score"
-                value={minMatchScore}
-                onChange={(e) => setMinMatchScore(e.target.value === '' ? '' : Number(e.target.value))}
-                size="small"
-                sx={{
-                  outline: 'none !important',
-                  WebkitTapHighlightColor: 'transparent',
-                  '& .MuiOutlinedInput-root': {
-                    bgcolor: '#FFF9FA',
-                    borderRadius: 2.5,
-                    outline: 'none !important',
-                    boxShadow: 'none !important',
-                    transition: 'all 0.2s ease',
-                    '& fieldset': { borderColor: '#EFE6E8', borderWidth: '1.5px', borderRadius: 2.5 },
-                    '&:hover fieldset': { borderColor: '#E8336D' },
-                    '&.Mui-focused': {
-                      bgcolor: '#FFFFFF',
-                    },
-                    '&.Mui-focused fieldset': {
-                      borderColor: '#E8336D',
-                      borderWidth: '1.5px',
-                      borderRadius: 2.5,
-                    },
-                  },
-                }}
-              >
-                <MenuItem value="">Any score</MenuItem>
-                <MenuItem value={50}>50%+ Match</MenuItem>
-                <MenuItem value={70}>70%+ High Match</MenuItem>
-                <MenuItem value={85}>85%+ Best Match</MenuItem>
-              </TextField>
-            </Box>
-            <Box sx={{ flex: 0.9, minWidth: 0 }}>
-              <TextField
-                fullWidth
-                select
                 label="Sort order"
                 value={sort}
                 onChange={(e) => setSort(e.target.value)}
@@ -857,7 +784,7 @@ export default function JobFeedPage() {
                   },
                 }}
               >
-                <MenuItem value="relevance">Relevance</MenuItem>
+                <MenuItem value="relevance">Match Score (Highest first)</MenuItem>
                 <MenuItem value="date">Date posted</MenuItem>
                 <MenuItem value="salary">Salary</MenuItem>
               </TextField>
