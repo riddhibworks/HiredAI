@@ -65,10 +65,11 @@ public class JobListingService {
     }
 
     private JobListingResponse toResponse(JobListing listing, String resumeText, Set<String> savedIds, Set<String> appliedIds) {
-        // Kept as separate statements: a ternary mixing double and Double would unbox a null matchScore.
         Double matchScore = listing.getMatchScore();
-        if (resumeText != null && listing.getDescription() != null) {
-            matchScore = matchingService.scoreMatch(resumeText, listing.getDescription());
+        if (resumeText != null && (listing.getTitle() != null || listing.getDescription() != null)) {
+            String fullText = (listing.getTitle() != null ? listing.getTitle() + " " : "") +
+                    (listing.getDescription() != null ? listing.getDescription() : "");
+            matchScore = matchingService.scoreMatch(resumeText, fullText);
         }
         return new JobListingResponse(listing.getId(), listing.getPlatform(), listing.getExternalJobId(),
                 listing.getTitle(), listing.getCompany(), listing.getLocation(), listing.getDescription(),
@@ -90,10 +91,14 @@ public class JobListingService {
         if (userId == null) {
             return null;
         }
-        return resumeRepository.findByUserId(userId).stream()
+        List<Resume> userResumes = resumeRepository.findByUserId(userId);
+        if (userResumes.isEmpty()) {
+            return null;
+        }
+        return userResumes.stream()
                 .filter(Resume::isDefault)
                 .findFirst()
-                .map(Resume::getParsedJson)
-                .orElse(null);
+                .orElse(userResumes.get(0))
+                .getParsedJson();
     }
 }
