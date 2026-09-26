@@ -42,7 +42,7 @@ public class ResumeParsingService {
             parsed.put("rawText", text);
 
             return objectMapper.writeValueAsString(parsed);
-        } catch (Exception e) {
+        } catch (Throwable e) {
             Map<String, Object> fallback = new LinkedHashMap<>();
             fallback.put("email", null);
             fallback.put("phone", null);
