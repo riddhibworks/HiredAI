@@ -1,6 +1,6 @@
 # 🚀 HiredAI — AI-Powered Job Application & Multi-Feed Aggregation Platform
 
-**HiredAI** is a high-performance, full-stack job application and feed aggregation platform designed to streamline remote job hunting. It aggregates real-time job listings across public job boards and custom feeds (RSS, Atom, JSON APIs, and Web Automation) into a single unified workspace, matching candidates against job roles using automated resume skill extraction and match scoring algorithms.
+**HiredAI** is a high-performance, full-stack job application and feed aggregation platform designed to streamline remote job hunting. It aggregates real-time job listings across public job boards and custom feeds (RSS, Atom, JSON APIs) into a single unified workspace, matching candidates against job roles using automated resume skill extraction and match scoring algorithms.
 
 ---
 
@@ -21,19 +21,16 @@
 ### **Background Task Execution: Spring Scheduling Framework**
 - **Why `@Scheduled` & `@Async`?**: Drives periodic automated background feed ingestion sweeps ([`JobIngestionScheduler.java`](file:///Users/riddhi/Desktop/Vesis/HiredAI/backend/src/main/java/com/hiredai/backend/service/JobIngestionScheduler.java#L23)) and on-demand refresh triggers without requiring heavy external message broker dependencies.
 
-### **Document Extraction & Processing: Apache Tika & PDFBox**
-- **Why Apache Tika & PDFBox?**: Provides robust, multi-format text extraction from candidate resumes (PDF, DOCX, DOC). Converts unstructured document streams into structured text for tokenized skill matching algorithms.
-
-### **Browser Automation & Web Scraping: Selenium & ChromeDriver**
-- **Why Selenium?**: Drives real, automated browser sessions (`LinkedInEasyApplyAdapter`, `IndeedAdapter`) to fetch live search listings from platforms without public developer APIs.
+### **Document Extraction & Processing: Apache Tika**
+- **Why Apache Tika?**: Provides robust, multi-format text extraction from candidate resumes (PDF, DOCX, DOC) via its `AutoDetectParser`. Converts unstructured document streams into structured JSON (skills, contact info, raw text) for tokenized skill matching algorithms in [`ResumeParsingService.java`](file:///Users/riddhi/Desktop/Vesis/HiredAI/backend/src/main/java/com/hiredai/backend/service/ResumeParsingService.java).
 
 ---
 
 ## 🏗️ Software Design Patterns & Architecture
 
-### **1. Adapter Pattern (`JobSourceAdapter` & `PlatformAdapter`)**
+### **1. Adapter Pattern (`JobSourceAdapter`)**
 - **Class**: [`com.hiredai.backend.adapter.JobSourceAdapter`](file:///Users/riddhi/Desktop/Vesis/HiredAI/backend/src/main/java/com/hiredai/backend/adapter/JobSourceAdapter.java)
-- **Purpose**: Abstracts job-fetching logic across vastly different data sources (RSS/Atom feeds, JSON REST APIs, and Selenium browser automation) behind a uniform interface.
+- **Purpose**: Abstracts job-fetching logic across vastly different data sources (RSS/Atom feeds, JSON REST APIs) behind a uniform interface (`fetchJobs`, `getPlatformName`, `isConfigured`).
 - **Benefit**: Adding a new job source or platform requires zero modifications to existing controllers or core domain services — strictly adhering to the **Open/Closed Principle (SOLID)**.
 
 ### **2. Repository Pattern (`Spring Data JPA`)**
@@ -82,6 +79,7 @@ HiredAI/
 ├── backend/                  # Spring Boot 3 Java 21 REST API
 │   ├── src/main/java/com/hiredai/backend/
 │   │   ├── adapter/          # Adapter pattern implementations (JobSourceAdapter)
+│   │   ├── config/           # Security, HTTP Client & OpenAPI configuration
 │   │   ├── controller/       # REST API endpoints
 │   │   ├── dto/              # Request/Response Data Transfer Objects
 │   │   ├── entity/           # JPA Database Entities
