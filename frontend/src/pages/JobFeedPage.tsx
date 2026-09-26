@@ -53,13 +53,42 @@ const parseInitialKeywords = (param: string): string[] => {
   return param.split(/[,\\s]+/).map((s) => s.trim()).filter(Boolean);
 };
 
+const SESSION_FILTER_KEY = 'hiredai_job_feed_filters';
+
+const loadSavedFilters = () => {
+  try {
+    const raw = sessionStorage.getItem(SESSION_FILTER_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {
+    // ignore
+  }
+  return null;
+};
+
 export default function JobFeedPage() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('lg'));
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialKeywordParam = searchParams.get('keyword') || '';
-  const initialLocation = searchParams.get('location') || '';
+  const saved = loadSavedFilters();
+
+  const urlKeyword = searchParams.get('keyword');
+  const urlLocation = searchParams.get('location');
+  const urlPlatform = searchParams.get('platform');
+  const urlSort = searchParams.get('sort');
+
+  const initialKeywords = urlKeyword !== null
+    ? parseInitialKeywords(urlKeyword)
+    : (saved?.keywords ?? []);
+  const initialLocation = urlLocation !== null
+    ? urlLocation
+    : (saved?.location ?? '');
+  const initialPlatform = urlPlatform !== null
+    ? urlPlatform
+    : (saved?.platform ?? '');
+  const initialSort = urlSort !== null
+    ? urlSort
+    : (saved?.sort ?? 'relevance');
 
   const navigate = useNavigate();
   const token = useAuthStore((s) => s.token);
@@ -69,12 +98,12 @@ export default function JobFeedPage() {
   const [platforms, setPlatforms] = useState<string[]>([]);
 
   // Multi-keyword state
-  const [keywords, setKeywords] = useState<string[]>(() => parseInitialKeywords(initialKeywordParam));
+  const [keywords, setKeywords] = useState<string[]>(initialKeywords);
   const [keywordInput, setKeywordInput] = useState('');
 
   const [location, setLocation] = useState(initialLocation);
-  const [platform, setPlatform] = useState('');
-  const [sort, setSort] = useState('relevance');
+  const [platform, setPlatform] = useState(initialPlatform);
+  const [sort, setSort] = useState(initialSort);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -86,6 +115,18 @@ export default function JobFeedPage() {
 
   // Mobile Filter Drawer state
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+
+  // Save filter state to sessionStorage whenever filters change
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(
+        SESSION_FILTER_KEY,
+        JSON.stringify({ keywords, location, platform, sort })
+      );
+    } catch {
+      // ignore
+    }
+  }, [keywords, location, platform, sort]);
 
   // Derived query string for API
   const getCombinedKeywordString = useCallback(() => {
@@ -193,6 +234,8 @@ export default function JobFeedPage() {
     const newParams: Record<string, string> = {};
     if (searchKeyword) newParams.keyword = searchKeyword;
     if (location) newParams.location = location;
+    if (platform) newParams.platform = platform;
+    if (sort && sort !== 'relevance') newParams.sort = sort;
     setSearchParams(newParams);
     load();
     if (mobileFilterOpen) setMobileFilterOpen(false);
@@ -204,6 +247,11 @@ export default function JobFeedPage() {
     setLocation('');
     setPlatform('');
     setSort('relevance');
+    try {
+      sessionStorage.removeItem(SESSION_FILTER_KEY);
+    } catch {
+      // ignore
+    }
     setSearchParams({});
     if (mobileFilterOpen) setMobileFilterOpen(false);
   };
