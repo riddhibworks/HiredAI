@@ -8,7 +8,7 @@ export const resumeApi = {
     form.append('file', file);
     if (label) form.append('label', label);
     return apiClient
-      .post<ResumeResponse>('/resumes', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+      .post<ResumeResponse>('/resumes', form)
       .then((r) => r.data);
   },
   remove: (id: string) => apiClient.delete(`/resumes/${id}`),

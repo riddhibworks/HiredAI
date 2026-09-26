@@ -30,18 +30,21 @@ public class ResumeService {
         if (file.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File is empty");
         }
-        String contentType = file.getContentType();
-        boolean isPdf = "application/pdf".equals(contentType);
-        boolean isDocx = "application/vnd.openxmlformats-officedocument.wordprocessingml.document".equals(contentType);
-        if (!isPdf && !isDocx) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only PDF or DOCX files are supported");
+        String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename().toLowerCase() : "";
+        String contentType = file.getContentType() != null ? file.getContentType().toLowerCase() : "";
+
+        boolean isPdf = originalFilename.endsWith(".pdf") || contentType.contains("pdf");
+        boolean isDoc = originalFilename.endsWith(".docx") || originalFilename.endsWith(".doc") || contentType.contains("word") || contentType.contains("msword");
+
+        if (!isPdf && !isDoc) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only PDF or DOCX/DOC files are supported");
         }
 
         try {
             Path dir = Paths.get(resumeDir, userId);
             Files.createDirectories(dir);
 
-            String extension = isPdf ? ".pdf" : ".docx";
+            String extension = isPdf ? ".pdf" : (originalFilename.endsWith(".doc") ? ".doc" : ".docx");
             String storedFileName = UUID.randomUUID() + extension;
             Path target = dir.resolve(storedFileName);
 

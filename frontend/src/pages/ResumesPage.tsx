@@ -39,13 +39,19 @@ export default function ResumesPage() {
     load();
   }, [token]);
 
-  const onDrop = useCallback((files: File[]) => {
+  const onDrop = useCallback((files: File[], fileRejections: any[]) => {
     setError(null);
+    if (fileRejections && fileRejections.length > 0) {
+      setError('Please select a valid PDF or DOCX file (up to 10MB).');
+    }
     files.forEach((file) => {
       resumeApi
         .upload(file, file.name)
         .then(() => load())
-        .catch(() => setError(`Failed to upload ${file.name}`));
+        .catch((err: any) => {
+          const message = err?.response?.data?.message || err?.message || 'Upload failed';
+          setError(`Failed to upload ${file.name}: ${message}`);
+        });
     });
   }, [token]);
 
@@ -53,8 +59,11 @@ export default function ResumesPage() {
     onDrop,
     accept: {
       'application/pdf': ['.pdf'],
+      'application/x-pdf': ['.pdf'],
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+      'application/msword': ['.doc'],
     },
+    maxSize: 10 * 1024 * 1024,
   });
 
   const handleDelete = async (id: string) => {

@@ -43,7 +43,16 @@ public class ResumeParsingService {
 
             return objectMapper.writeValueAsString(parsed);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to parse resume: " + e.getMessage(), e);
+            Map<String, Object> fallback = new LinkedHashMap<>();
+            fallback.put("email", null);
+            fallback.put("phone", null);
+            fallback.put("skills", java.util.List.of());
+            fallback.put("rawText", "");
+            try {
+                return objectMapper.writeValueAsString(fallback);
+            } catch (Exception ignored) {
+                return "{}";
+            }
         }
     }
 
