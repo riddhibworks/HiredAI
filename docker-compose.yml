@@ -33,14 +33,7 @@ services:
       REDIS_PORT: 6379
       JWT_SECRET: ${JWT_SECRET:-change-this-development-only-secret-key-please-rotate-in-prod}
       CORS_ALLOWED_ORIGINS: http://localhost:5173
-      THEMUSE_API_KEY: ${THEMUSE_API_KEY:-}
-      ADZUNA_APP_ID: ${ADZUNA_APP_ID:-}
-      ADZUNA_APP_KEY: ${ADZUNA_APP_KEY:-}
-      ADZUNA_COUNTRY: ${ADZUNA_COUNTRY:-us}
-      USAJOBS_API_KEY: ${USAJOBS_API_KEY:-}
-      USAJOBS_EMAIL: ${USAJOBS_EMAIL:-}
-      REED_API_KEY: ${REED_API_KEY:-}
-      JOOBLE_API_KEY: ${JOOBLE_API_KEY:-}
+
     ports:
       - "8080:8080"
     depends_on:

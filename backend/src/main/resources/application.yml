@@ -45,20 +45,7 @@ app:
     resume-dir: ${RESUME_STORAGE_DIR:./data/resumes}
   ingestion:
     interval-ms: ${INGESTION_INTERVAL_MS:3600000}
-  sources:
-    themuse:
-      api-key: ${THEMUSE_API_KEY:}
-    adzuna:
-      app-id: ${ADZUNA_APP_ID:}
-      app-key: ${ADZUNA_APP_KEY:}
-      country: ${ADZUNA_COUNTRY:us}
-    usajobs:
-      api-key: ${USAJOBS_API_KEY:}
-      user-agent-email: ${USAJOBS_EMAIL:}
-    reed:
-      api-key: ${REED_API_KEY:}
-    jooble:
-      api-key: ${JOOBLE_API_KEY:}
+
 
 logging:
   level:

@@ -59,9 +59,9 @@ const SAMPLE_FEATURED_JOBS = [
 
 const SOURCE_PLATFORMS = [
   { name: 'RemoteOK', count: '450+ roles' },
-  { name: 'We Work Remotely', count: '620+ roles' },
+  { name: 'Jobicy', count: '380+ roles' },
   { name: 'Arbeitnow', count: '280+ roles' },
-  { name: 'Adzuna', count: '500+ roles' },
+  { name: 'Himalayas', count: '420+ roles' },
   { name: 'Remotive', count: '310+ roles' },
   { name: 'Custom Feeds', count: 'RSS & JSON' },
 ];

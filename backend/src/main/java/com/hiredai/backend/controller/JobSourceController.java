@@ -29,8 +29,7 @@ public class JobSourceController {
     private final CurrentUserProvider currentUserProvider;
     private final List<JobSourceAdapter> builtInAdapters;
 
-    /** Read-only list of the app's built-in platform adapters (Arbeitnow, RemoteOK, Adzuna, etc.) and whether
-     * each is currently active — key-gated adapters show inactive until their API key env vars are configured. */
+    /** Read-only list of the app's built-in platform adapters (Arbeitnow, RemoteOK, Remotive, Jobicy, Himalayas) and whether each is currently active. */
     @Operation(summary = "Get list of built-in platform adapters and status")
     @GetMapping("/built-in")
     public ResponseEntity<List<BuiltInJobSourceResponse>> listBuiltIn() {
