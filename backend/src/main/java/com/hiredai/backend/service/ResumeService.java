@@ -9,6 +9,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import org.springframework.transaction.annotation.Transactional;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -26,6 +28,7 @@ public class ResumeService {
     @Value("${app.storage.resume-dir}")
     private String resumeDir;
 
+    @Transactional
     public Resume upload(String userId, String label, MultipartFile file) {
         if (file.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File is empty");
@@ -66,10 +69,12 @@ public class ResumeService {
         }
     }
 
+    @Transactional(readOnly = true)
     public List<Resume> listForUser(String userId) {
         return resumeRepository.findByUserId(userId);
     }
 
+    @Transactional
     public void delete(String userId, String resumeId) {
         Resume resume = resumeRepository.findByIdAndUserId(resumeId, userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Resume not found"));

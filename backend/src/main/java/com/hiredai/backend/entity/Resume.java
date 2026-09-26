@@ -27,7 +27,6 @@ public class Resume {
     @Column(nullable = false)
     private String fileUrl;
 
-    @Lob
     @Column(columnDefinition = "TEXT")
     private String parsedJson;
 
