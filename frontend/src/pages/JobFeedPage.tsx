@@ -161,9 +161,13 @@ export default function JobFeedPage() {
     if (e.key === 'Enter' || e.key === ',') {
       e.preventDefault();
       const val = keywordInput.trim().replace(/,/g, '');
-      if (val && !keywords.includes(val)) {
-        setKeywords((prev) => [...prev, val]);
+      if (val) {
+        if (!keywords.includes(val)) {
+          setKeywords((prev) => [...prev, val]);
+        }
         setKeywordInput('');
+      } else {
+        handleSearchSubmit(e);
       }
     } else if (e.key === 'Backspace' && !keywordInput && keywords.length > 0) {
       setKeywords((prev) => prev.slice(0, -1));
@@ -260,15 +264,21 @@ export default function JobFeedPage() {
     <Box
       sx={{
         display: 'flex',
-        flexWrap: 'wrap',
+        flexWrap: 'nowrap',
         alignItems: 'center',
         gap: 0.75,
-        p: '6px 14px',
+        px: 1.5,
         bgcolor: '#FFF9FA',
         border: '1.5px solid #EFE6E8',
         borderRadius: 2.5,
+        height: 40,
         minHeight: 40,
+        maxHeight: 40,
         boxSizing: 'border-box',
+        overflowX: 'auto',
+        '&::-webkit-scrollbar': { display: 'none' },
+        scrollbarWidth: 'none',
+        msOverflowStyle: 'none',
         outline: 'none !important',
         WebkitTapHighlightColor: 'transparent',
         transition: 'all 0.2s ease',
@@ -296,6 +306,7 @@ export default function JobFeedPage() {
             fontWeight: 600,
             fontSize: '0.75rem',
             height: 24,
+            flexShrink: 0,
             outline: 'none !important',
           }}
         />
@@ -314,9 +325,10 @@ export default function JobFeedPage() {
           color: '#241019',
           fontFamily: 'inherit',
           fontSize: '0.875rem',
-          flexGrow: 1,
-          minWidth: 100,
-          py: 0.5,
+          flex: '1 0 100px',
+          minWidth: 80,
+          py: 0,
+          height: '100%',
           boxShadow: 'none !important',
           '&:focus': { outline: 'none !important' },
         }}
@@ -657,9 +669,9 @@ export default function JobFeedPage() {
           <Box
             sx={{
               display: 'flex',
-              flexDirection: 'row',
+              flexDirection: { xs: 'column', md: 'row' },
               gap: 2,
-              alignItems: 'center',
+              alignItems: { xs: 'stretch', md: 'center' },
               width: '100%',
             }}
           >
@@ -790,6 +802,7 @@ export default function JobFeedPage() {
                 fontWeight: 700,
                 borderRadius: 2.5,
                 flexShrink: 0,
+                width: { xs: '100%', md: 'auto' },
                 outline: 'none !important',
                 boxShadow: 'none !important',
                 '&:hover': {

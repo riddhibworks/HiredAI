@@ -146,7 +146,7 @@ export default function HomePage() {
                   flexDirection: { xs: 'column', sm: 'row' },
                   alignItems: 'stretch',
                   gap: 1.5,
-                  borderRadius: 50,
+                  borderRadius: { xs: 4, sm: 50 },
                   border: '1px solid #EFE6E8',
                   boxShadow: '0 8px 30px rgba(36, 16, 25, 0.06)',
                   bgcolor: '#FFFFFF',
@@ -172,12 +172,12 @@ export default function HomePage() {
                     '& .MuiOutlinedInput-root': {
                       height: 48,
                       bgcolor: '#FFF9FA',
-                      borderRadius: 50,
+                      borderRadius: { xs: 3, sm: 50 },
                       fontSize: '0.95rem',
                       outline: 'none !important',
                       boxShadow: 'none !important',
                       transition: 'all 0.2s ease',
-                      '& fieldset': { borderColor: '#EFE6E8', borderWidth: '1.5px', borderRadius: 50 },
+                      '& fieldset': { borderColor: '#EFE6E8', borderWidth: '1.5px', borderRadius: { xs: 3, sm: 50 } },
                       '&:hover fieldset': { borderColor: '#E8336D' },
                       '&.Mui-focused': {
                         bgcolor: '#FFFFFF',
@@ -185,7 +185,7 @@ export default function HomePage() {
                       '&.Mui-focused fieldset': {
                         borderColor: '#E8336D',
                         borderWidth: '1.5px',
-                        borderRadius: 50,
+                        borderRadius: { xs: 3, sm: 50 },
                         boxShadow: 'none',
                       },
                     },
@@ -210,12 +210,12 @@ export default function HomePage() {
                     '& .MuiOutlinedInput-root': {
                       height: 48,
                       bgcolor: '#FFF9FA',
-                      borderRadius: 50,
+                      borderRadius: { xs: 3, sm: 50 },
                       fontSize: '0.95rem',
                       outline: 'none !important',
                       boxShadow: 'none !important',
                       transition: 'all 0.2s ease',
-                      '& fieldset': { borderColor: '#EFE6E8', borderWidth: '1.5px', borderRadius: 50 },
+                      '& fieldset': { borderColor: '#EFE6E8', borderWidth: '1.5px', borderRadius: { xs: 3, sm: 50 } },
                       '&:hover fieldset': { borderColor: '#E8336D' },
                       '&.Mui-focused': {
                         bgcolor: '#FFFFFF',
@@ -223,7 +223,7 @@ export default function HomePage() {
                       '&.Mui-focused fieldset': {
                         borderColor: '#E8336D',
                         borderWidth: '1.5px',
-                        borderRadius: 50,
+                        borderRadius: { xs: 3, sm: 50 },
                         boxShadow: 'none',
                       },
                     },
@@ -238,7 +238,7 @@ export default function HomePage() {
                     whiteSpace: 'nowrap',
                     fontSize: '0.95rem',
                     fontWeight: 700,
-                    borderRadius: 50,
+                    borderRadius: { xs: 3, sm: 50 },
                     bgcolor: '#E8336D', // --color-accent
                     color: '#FFFFFF',
                     flexShrink: 0,
