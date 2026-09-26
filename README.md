@@ -16,10 +16,10 @@
 
 ### **Database & Caching: PostgreSQL & Redis**
 - **Why PostgreSQL?**: Serves as the primary relational database for ACID-compliant persistence of candidate user profiles, uploaded resume text JSON structures, encrypted platform credentials, custom job feeds, and saved job tracker records.
-- **Why Redis?**: Used as an in-memory high-speed cache and session store for rapid data access, caching search results, platform statuses, rate-limiting counters, and session tokens to eliminate redundant DB queries during high-concurrency feed sweeps.
+- **Why Redis?**: Used as an in-memory high-speed cache and data store for rapid data access, caching search results, platform statuses, rate-limiting counters, and session state to eliminate redundant DB queries during high-concurrency feed sweeps.
 
-### **Asynchronous Messaging: RabbitMQ**
-- **Why RabbitMQ?**: Decouples long-running job ingestion sweeps, heavy resume document parsing, and platform automation tasks from synchronous HTTP API threads. Prevents client request timeouts by processing background tasks asynchronously with worker queues.
+### **Background Task Execution: Spring Scheduling Framework**
+- **Why `@Scheduled` & `@Async`?**: Drives periodic automated background feed ingestion sweeps ([`JobIngestionScheduler.java`](file:///Users/riddhi/Desktop/Vesis/HiredAI/backend/src/main/java/com/hiredai/backend/service/JobIngestionScheduler.java#L23)) and on-demand refresh triggers without requiring heavy external message broker dependencies.
 
 ### **Document Extraction & Processing: Apache Tika & PDFBox**
 - **Why Apache Tika & PDFBox?**: Provides robust, multi-format text extraction from candidate resumes (PDF, DOCX, DOC). Converts unstructured document streams into structured text for tokenized skill matching algorithms.
@@ -32,24 +32,24 @@
 ## 🏗️ Software Design Patterns & Architecture
 
 ### **1. Adapter Pattern (`JobSourceAdapter` & `PlatformAdapter`)**
+- **Class**: [`com.hiredai.backend.adapter.JobSourceAdapter`](file:///Users/riddhi/Desktop/Vesis/HiredAI/backend/src/main/java/com/hiredai/backend/adapter/JobSourceAdapter.java)
 - **Purpose**: Abstracts job-fetching logic across vastly different data sources (RSS/Atom feeds, JSON REST APIs, and Selenium browser automation) behind a uniform interface.
 - **Benefit**: Adding a new job source or platform requires zero modifications to existing controllers or core domain services — strictly adhering to the **Open/Closed Principle (SOLID)**.
 
 ### **2. Repository Pattern (`Spring Data JPA`)**
+- **Class**: [`com.hiredai.backend.repository.JobListingRepository`](file:///Users/riddhi/Desktop/Vesis/HiredAI/backend/src/main/java/com/hiredai/backend/repository/JobListingRepository.java)
 - **Purpose**: Decouples domain logic from SQL query execution and database interactions.
 - **Benefit**: Allows clean, testable data access logic and dynamic criteria building via `Specification<JobListing>`.
 
 ### **3. Strategy / Dynamic Pipeline Pattern (`MatchingService`)**
+- **Class**: [`com.hiredai.backend.service.MatchingService`](file:///Users/riddhi/Desktop/Vesis/HiredAI/backend/src/main/java/com/hiredai/backend/service/MatchingService.java)
 - **Purpose**: Tokenizes candidate resume skills and job requirements into normalized term frequency vectors to compute dynamic, real-time 0–100% match scores.
 - **Benefit**: Keeps scoring algorithms modular and replaceable (e.g., swapping keyword overlap for embeddings/vector search without breaking consumer code).
 
-### **4. Producer-Consumer / Asynchronous Worker Pattern (`ApplyQueueService` & `ApplyQueueWorker`)**
-- **Purpose**: Uses RabbitMQ message queues to offload heavy background tasks from main HTTP thread pools.
-- **Benefit**: Guarantees zero UI blocking and scales worker instances independently under heavy job ingestion loads.
-
-### **5. Security & Encryption (`EncryptionService` - AES-256-GCM)**
-- **Purpose**: Encrypts sensitive candidate credentials before persisting to PostgreSQL using AES-256-GCM.
-- **Benefit**: Protects user credentials at rest with authenticated encryption.
+### **4. Scheduled Task Ingestion Pattern (`JobIngestionScheduler`)**
+- **Class**: [`com.hiredai.backend.service.JobIngestionScheduler`](file:///Users/riddhi/Desktop/Vesis/HiredAI/backend/src/main/java/com/hiredai/backend/service/JobIngestionScheduler.java)
+- **Purpose**: Periodically triggers automated feed updates across all registered adapters every 60 minutes or on-demand via the `/api/jobs/refresh` REST endpoint.
+- **Benefit**: Ensures candidate job feeds remain up-to-date with minimal database overhead.
 
 ---
 
@@ -65,7 +65,7 @@
 
 ## 🐳 Running Locally via Docker
 
-The entire platform (Postgres, Redis, RabbitMQ, Spring Boot backend, and Nginx/React frontend) is containerized for one-command deployment.
+The entire platform (Postgres, Redis, Spring Boot backend, and Nginx/React frontend) is containerized for one-command deployment.
 
 ```bash
 docker-compose up --build
@@ -96,5 +96,5 @@ HiredAI/
 │   │   ├── pages/            # JobFeed, Resumes, SavedJobs, JobSources, Auth pages
 │   │   └── store/            # State management (Zustand)
 │   └── Dockerfile            # Multi-stage Vite/Nginx production container
-└── docker-compose.yml        # Orchestration for Postgres, Redis, RabbitMQ, Backend, Frontend
+└── docker-compose.yml        # Orchestration for Postgres, Redis, Backend, Frontend
 ```
