@@ -28,12 +28,11 @@ public class ResumeParsingService {
 
     public String parseToJson(byte[] fileBytes) {
         try {
-            BodyContentHandler handler = new BodyContentHandler(-1);
-            Metadata metadata = new Metadata();
-            AutoDetectParser parser = new AutoDetectParser();
-            parser.parse(new ByteArrayInputStream(fileBytes), handler, metadata, new ParseContext());
-
-            String text = handler.toString();
+            org.apache.tika.Tika tika = new org.apache.tika.Tika();
+            String text = tika.parseToString(new ByteArrayInputStream(fileBytes));
+            if (text == null) {
+                text = "";
+            }
 
             Map<String, Object> parsed = new LinkedHashMap<>();
             parsed.put("email", firstMatch(EMAIL_PATTERN, text));
