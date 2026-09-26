@@ -6,6 +6,7 @@ export const jobsApi = {
     keyword?: string;
     location?: string;
     platform?: string;
+    minMatchScore?: number;
     sort?: string;
     page?: number;
     size?: number;

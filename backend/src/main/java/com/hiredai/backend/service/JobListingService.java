@@ -29,7 +29,7 @@ public class JobListingService {
     private final MatchingService matchingService;
 
     public Page<JobListingResponse> search(String userId, String keyword, String location, String platform,
-                                            String sort, int page, int size) {
+                                            Double minMatchScore, String sort, int page, int size) {
         Specification<JobListing> spec = Specification.allOf(Stream.of(
                         JobListingSpecifications.keyword(keyword),
                         JobListingSpecifications.location(location),
@@ -45,6 +45,7 @@ public class JobListingService {
 
         List<JobListingResponse> content = results.getContent().stream()
                 .map(listing -> toResponse(listing, resumeText, savedIds, appliedIds))
+                .filter(r -> minMatchScore == null || (r.matchScore() != null && r.matchScore() >= minMatchScore))
                 .collect(java.util.stream.Collectors.toCollection(java.util.ArrayList::new));
 
         if ("relevance".equals(sort)) {

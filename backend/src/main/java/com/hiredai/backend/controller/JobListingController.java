@@ -47,11 +47,12 @@ public class JobListingController {
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String location,
             @RequestParam(required = false) String platform,
+            @RequestParam(required = false) Double minMatchScore,
             @RequestParam(required = false) String sort,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
 
-        var results = jobListingService.search(currentUserProvider.getUserId(), keyword, location, platform, sort, page, size);
+        var results = jobListingService.search(currentUserProvider.getUserId(), keyword, location, platform, minMatchScore, sort, page, size);
         return ResponseEntity.ok(results);
     }
 
