@@ -58,6 +58,7 @@ const SAMPLE_FEATURED_JOBS = [
 ];
 
 const SOURCE_PLATFORMS = [
+  { name: 'Google Jobs', count: '500+ roles' },
   { name: 'RemoteOK', count: '450+ roles' },
   { name: 'Jobicy', count: '380+ roles' },
   { name: 'Arbeitnow', count: '280+ roles' },
