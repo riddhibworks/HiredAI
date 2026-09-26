@@ -260,7 +260,7 @@ export default function JobFeedPage() {
         },
         '&:focus-within': {
           borderColor: '#E8336D',
-          bgcolor: '#FFD9E4',
+          bgcolor: '#FFFFFF',
           boxShadow: 'none',
         },
       }}
@@ -663,7 +663,7 @@ export default function JobFeedPage() {
                     '& fieldset': { borderColor: '#EFE6E8', borderWidth: '1.5px', borderRadius: 50 },
                     '&:hover fieldset': { borderColor: '#E8336D' },
                     '&.Mui-focused': {
-                      bgcolor: '#FFD9E4',
+                      bgcolor: '#FFFFFF',
                     },
                     '&.Mui-focused fieldset': {
                       borderColor: '#E8336D',
@@ -694,7 +694,7 @@ export default function JobFeedPage() {
                     '& fieldset': { borderColor: '#EFE6E8', borderWidth: '1.5px', borderRadius: 50 },
                     '&:hover fieldset': { borderColor: '#E8336D' },
                     '&.Mui-focused': {
-                      bgcolor: '#FFD9E4',
+                      bgcolor: '#FFFFFF',
                     },
                     '&.Mui-focused fieldset': {
                       borderColor: '#E8336D',
@@ -732,7 +732,7 @@ export default function JobFeedPage() {
                     '& fieldset': { borderColor: '#EFE6E8', borderWidth: '1.5px', borderRadius: 50 },
                     '&:hover fieldset': { borderColor: '#E8336D' },
                     '&.Mui-focused': {
-                      bgcolor: '#FFD9E4',
+                      bgcolor: '#FFFFFF',
                     },
                     '&.Mui-focused fieldset': {
                       borderColor: '#E8336D',
@@ -764,7 +764,7 @@ export default function JobFeedPage() {
                 boxShadow: 'none !important',
                 '&:hover': {
                   borderColor: '#A31346',
-                  bgcolor: '#FFD9E4',
+                  bgcolor: '#FFF0F4',
                 },
               }}
             >

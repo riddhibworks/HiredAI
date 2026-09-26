@@ -141,13 +141,13 @@ export const theme = createTheme({
           '&:hover': {
             borderWidth: '1.5px',
             borderColor: '#A31346',
-            backgroundColor: '#FFD9E4',
+            backgroundColor: '#FFF0F4',
           },
         },
         textPrimary: {
           color: '#A31346',
           '&:hover': {
-            backgroundColor: '#FFD9E4',
+            backgroundColor: '#FFF0F4',
           },
         },
       },
@@ -184,6 +184,7 @@ export const theme = createTheme({
           fontFamily: "'Inter', sans-serif",
           fontWeight: 500,
           borderRadius: 8,
+          outline: 'none !important',
         },
         filledPrimary: {
           backgroundColor: '#FFD9E4',
@@ -206,6 +207,8 @@ export const theme = createTheme({
         root: {
           borderRadius: 10,
           backgroundColor: '#FFFFFF',
+          outline: 'none !important',
+          boxShadow: 'none !important',
           '& .MuiOutlinedInput-notchedOutline': {
             borderColor: '#EFE6E8',
             borderWidth: '1.5px',
@@ -213,9 +216,59 @@ export const theme = createTheme({
           '&:hover .MuiOutlinedInput-notchedOutline': {
             borderColor: '#D8C3C9',
           },
+          '&.Mui-focused': {
+            backgroundColor: '#FFFFFF',
+          },
           '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-            borderColor: '#A31346',
-            borderWidth: '2px',
+            borderColor: '#E8336D',
+            borderWidth: '1.5px',
+            boxShadow: 'none',
+          },
+        },
+      },
+    },
+    MuiSelect: {
+      styleOverrides: {
+        select: {
+          outline: 'none !important',
+          boxShadow: 'none !important',
+          '&:focus': {
+            outline: 'none !important',
+            backgroundColor: 'transparent',
+          },
+        },
+      },
+    },
+    MuiMenuItem: {
+      styleOverrides: {
+        root: {
+          borderRadius: 8,
+          margin: '2px 6px',
+          outline: 'none !important',
+          boxShadow: 'none !important',
+          WebkitTapHighlightColor: 'transparent',
+          '&:focus': {
+            outline: 'none !important',
+            boxShadow: 'none !important',
+            backgroundColor: '#FFF9FA',
+          },
+          '&:focus-visible': {
+            outline: 'none !important',
+            boxShadow: 'none !important',
+          },
+          '&.Mui-selected': {
+            backgroundColor: '#FFF0F4',
+            color: '#A31346',
+            fontWeight: 600,
+            '&:hover': {
+              backgroundColor: '#FFE5EC',
+            },
+            '&.Mui-focused': {
+              backgroundColor: '#FFE5EC',
+            },
+          },
+          '&:hover': {
+            backgroundColor: '#FFF9FA',
           },
         },
       },
@@ -240,6 +293,7 @@ export const theme = createTheme({
           textTransform: 'none',
           color: '#8A6E76',
           minHeight: 48,
+          outline: 'none !important',
           '&.Mui-selected': {
             color: '#A31346',
             fontWeight: 700,

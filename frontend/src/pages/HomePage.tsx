@@ -179,7 +179,7 @@ export default function HomePage() {
                       '& fieldset': { borderColor: '#EFE6E8', borderWidth: '1.5px', borderRadius: 50 },
                       '&:hover fieldset': { borderColor: '#E8336D' },
                       '&.Mui-focused': {
-                        bgcolor: '#FFD9E4',
+                        bgcolor: '#FFFFFF',
                       },
                       '&.Mui-focused fieldset': {
                         borderColor: '#E8336D',
@@ -217,7 +217,7 @@ export default function HomePage() {
                       '& fieldset': { borderColor: '#EFE6E8', borderWidth: '1.5px', borderRadius: 50 },
                       '&:hover fieldset': { borderColor: '#E8336D' },
                       '&.Mui-focused': {
-                        bgcolor: '#FFD9E4',
+                        bgcolor: '#FFFFFF',
                       },
                       '&.Mui-focused fieldset': {
                         borderColor: '#E8336D',

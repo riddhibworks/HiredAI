@@ -36,17 +36,23 @@ h1, h2, h3, h4, .font-headline {
   color: var(--color-ink);
 }
 
-/* Keyboard focus state using --color-accent-deep */
+/* Clean focus state without sharp square box */
+a:focus,
+button:focus,
+input:focus,
+textarea:focus,
+select:focus,
+[tabindex]:focus,
 a:focus-visible,
 button:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
 select:focus-visible,
 [tabindex]:focus-visible,
-.MuiButtonBase-root:focus-visible {
-  outline: 2px solid var(--color-accent-deep) !important;
-  outline-offset: 3px !important;
-  box-shadow: 0 0 0 4px rgba(163, 19, 70, 0.15) !important;
+.MuiButtonBase-root:focus-visible,
+.MuiInputBase-root:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 /* One deliberate motion moment on load for Hero card stack */
