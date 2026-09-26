@@ -25,22 +25,8 @@ export default function App() {
         <Route element={<AppLayout />}>
           <Route path="/" element={<HomePage />} />
           <Route path="/jobs" element={<JobFeedPage />} />
-          <Route
-            path="/saved-jobs"
-            element={
-              <RequireAuth>
-                <SavedJobsPage />
-              </RequireAuth>
-            }
-          />
-          <Route
-            path="/resumes"
-            element={
-              <RequireAuth>
-                <ResumesPage />
-              </RequireAuth>
-            }
-          />
+          <Route path="/saved-jobs" element={<SavedJobsPage />} />
+          <Route path="/resumes" element={<ResumesPage />} />
           <Route path="/job-sources" element={<JobSourcesPage />} />
         </Route>
 

@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useDropzone } from 'react-dropzone';
 import {
   Alert,
   Box,
+  Button,
   Chip,
   IconButton,
   List,
@@ -17,18 +19,25 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import DescriptionIcon from '@mui/icons-material/Description';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 
+import { useAuthStore } from '../store/authStore';
 import { resumeApi } from '../api/resumes';
 import type { ResumeResponse } from '../types/api';
 
 export default function ResumesPage() {
+  const navigate = useNavigate();
+  const token = useAuthStore((s) => s.token);
   const [resumes, setResumes] = useState<ResumeResponse[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  const load = () => resumeApi.list().then(setResumes).catch(() => setError('Failed to load resumes'));
+  const load = () => {
+    if (token) {
+      resumeApi.list().then(setResumes).catch(() => setError('Failed to load resumes'));
+    }
+  };
 
   useEffect(() => {
     load();
-  }, []);
+  }, [token]);
 
   const onDrop = useCallback((files: File[]) => {
     setError(null);
@@ -38,7 +47,7 @@ export default function ResumesPage() {
         .then(() => load())
         .catch(() => setError(`Failed to upload ${file.name}`));
     });
-  }, []);
+  }, [token]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -63,6 +72,60 @@ export default function ResumesPage() {
       </Typography>
 
       {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
+
+      {!token ? (
+        <Paper
+          elevation={0}
+          sx={{
+            p: { xs: 4, md: 6 },
+            textAlign: 'center',
+            bgcolor: '#FFFFFF',
+            border: '1px solid #EFE6E8',
+            borderRadius: 4,
+            mt: 2,
+          }}
+        >
+          <Box
+            sx={{
+              width: 56,
+              height: 56,
+              borderRadius: '50%',
+              bgcolor: '#FFF0F4',
+              color: '#A31346',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              mx: 'auto',
+              mb: 2,
+            }}
+          >
+            <DescriptionIcon sx={{ fontSize: 28 }} />
+          </Box>
+          <Typography variant="h5" sx={{ color: '#241019', mb: 1, fontWeight: 700 }}>
+            Upload your resume for AI match scores
+          </Typography>
+          <Typography variant="body2" sx={{ color: '#8A6E76', mb: 3, lineHeight: 1.6, maxWidth: 520, mx: 'auto' }}>
+            Upload your resume (PDF or DOCX) to get automated match scores across job feed listings. Sign in or create an account to start parsing your resume.
+          </Typography>
+          <Box display="flex" justifyContent="center" gap={2} flexWrap="wrap">
+            <Button
+              variant="contained"
+              onClick={() => navigate('/register')}
+              sx={{ bgcolor: '#E8336D', color: '#FFFFFF', fontWeight: 700, px: 3, py: 1 }}
+            >
+              Get started
+            </Button>
+            <Button
+              variant="outlined"
+              onClick={() => navigate('/login')}
+              sx={{ borderColor: '#E8336D', color: '#A31346', fontWeight: 600, px: 3, py: 1 }}
+            >
+              Sign in
+            </Button>
+          </Box>
+        </Paper>
+      ) : (
+        <Box>
 
       {/* Drag & Drop Upload Zone */}
       <Paper
@@ -183,6 +246,8 @@ export default function ResumesPage() {
           </Paper>
         )}
       </List>
+        </Box>
+      )}
     </Box>
   );
 }

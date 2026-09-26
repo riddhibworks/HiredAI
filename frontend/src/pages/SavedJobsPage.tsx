@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Alert,
   Box,
@@ -19,19 +20,24 @@ import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
 
+import { useAuthStore } from '../store/authStore';
 import { savedJobsApi } from '../api/savedJobs';
 import type { SavedJobResponse } from '../types/api';
 
 export default function SavedJobsPage() {
+  const navigate = useNavigate();
+  const token = useAuthStore((s) => s.token);
   const [savedJobs, setSavedJobs] = useState<SavedJobResponse[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const load = () => {
-    savedJobsApi.list().then(setSavedJobs).catch(() => setError('Failed to load saved jobs'));
+    if (token) {
+      savedJobsApi.list().then(setSavedJobs).catch(() => setError('Failed to load saved jobs'));
+    }
   };
 
-  useEffect(load, []);
+  useEffect(load, [token]);
 
   const handleUnsave = async (job: SavedJobResponse) => {
     setBusyId(job.id);
@@ -71,7 +77,61 @@ export default function SavedJobsPage() {
 
       {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
 
-      <Grid container spacing={2.5}>
+      {!token ? (
+        <Paper
+          elevation={0}
+          sx={{
+            p: { xs: 4, md: 6 },
+            textAlign: 'center',
+            bgcolor: '#FFFFFF',
+            border: '1px solid #EFE6E8',
+            borderRadius: 4,
+            maxWidth: 560,
+            mx: 'auto',
+            mt: 2,
+          }}
+        >
+          <Box
+            sx={{
+              width: 56,
+              height: 56,
+              borderRadius: '50%',
+              bgcolor: '#FFF0F4',
+              color: '#A31346',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              mx: 'auto',
+              mb: 2,
+            }}
+          >
+            <BookmarkIcon sx={{ fontSize: 28 }} />
+          </Box>
+          <Typography variant="h5" sx={{ color: '#241019', mb: 1, fontWeight: 700 }}>
+            Track and organize your saved jobs
+          </Typography>
+          <Typography variant="body2" sx={{ color: '#8A6E76', mb: 3, lineHeight: 1.6 }}>
+            Sign in or create an account to save job listings, track your application progress, and organize your job search.
+          </Typography>
+          <Box display="flex" justifyContent="center" gap={2} flexWrap="wrap">
+            <Button
+              variant="contained"
+              onClick={() => navigate('/register')}
+              sx={{ bgcolor: '#E8336D', color: '#FFFFFF', fontWeight: 700, px: 3, py: 1 }}
+            >
+              Get started
+            </Button>
+            <Button
+              variant="outlined"
+              onClick={() => navigate('/login')}
+              sx={{ borderColor: '#E8336D', color: '#A31346', fontWeight: 600, px: 3, py: 1 }}
+            >
+              Sign in
+            </Button>
+          </Box>
+        </Paper>
+      ) : (
+        <Grid container spacing={2.5}>
         {savedJobs.map((job) => (
           <Grid item xs={12} md={6} key={job.id}>
             <Card
@@ -210,6 +270,7 @@ export default function SavedJobsPage() {
           </Grid>
         )}
       </Grid>
+      )}
     </Box>
   );
 }
