@@ -242,14 +242,14 @@ export default function JobSourcesPage() {
         </ToggleButton>
       </ToggleButtonGroup>
 
-      <Box display="flex" gap={2} mb={2} flexWrap="wrap">
+      <Box display="flex" gap={2} mb={2} flexDirection={{ xs: 'column', sm: 'row' }}>
         <TextField
           label="Source name"
           placeholder="e.g. Remote Python Jobs"
           value={form.name}
           onChange={(e) => updateField('name', e.target.value)}
           size="small"
-          sx={{ minWidth: 220 }}
+          sx={{ width: { xs: '100%', sm: 'auto' }, flex: { sm: 1 }, minWidth: 0 }}
         />
         <TextField
           label={form.sourceType === 'JSON_API' ? 'API Endpoint URL' : 'Feed URL (RSS/Atom)'}
@@ -257,7 +257,7 @@ export default function JobSourcesPage() {
           value={form.feedUrl}
           onChange={(e) => updateField('feedUrl', e.target.value)}
           size="small"
-          sx={{ flexGrow: 1, minWidth: 320 }}
+          sx={{ width: { xs: '100%', sm: 'auto' }, flex: { sm: 2 }, minWidth: 0 }}
         />
       </Box>
 
@@ -267,22 +267,23 @@ export default function JobSourcesPage() {
             Dot-paths into JSON response, e.g. for <code>{'{ "data": { "jobs": [{ "title": "..." }] } }'}</code> set List path to <code>data.jobs</code>.
           </Typography>
           <Box display="flex" gap={1.5} flexWrap="wrap">
-            <TextField label="List path *" value={form.listPath} onChange={(e) => updateField('listPath', e.target.value)} size="small" />
-            <TextField label="Title path *" value={form.titlePath} onChange={(e) => updateField('titlePath', e.target.value)} size="small" />
-            <TextField label="URL path *" value={form.urlPath} onChange={(e) => updateField('urlPath', e.target.value)} size="small" />
-            <TextField label="Company path" value={form.companyPath} onChange={(e) => updateField('companyPath', e.target.value)} size="small" />
-            <TextField label="Location path" value={form.locationPath} onChange={(e) => updateField('locationPath', e.target.value)} size="small" />
-            <TextField label="Description path" value={form.descriptionPath} onChange={(e) => updateField('descriptionPath', e.target.value)} size="small" />
+            <TextField label="List path *" value={form.listPath} onChange={(e) => updateField('listPath', e.target.value)} size="small" sx={{ width: { xs: '100%', sm: 'calc(50% - 6px)', md: 'calc(33.3% - 8px)' } }} />
+            <TextField label="Title path *" value={form.titlePath} onChange={(e) => updateField('titlePath', e.target.value)} size="small" sx={{ width: { xs: '100%', sm: 'calc(50% - 6px)', md: 'calc(33.3% - 8px)' } }} />
+            <TextField label="URL path *" value={form.urlPath} onChange={(e) => updateField('urlPath', e.target.value)} size="small" sx={{ width: { xs: '100%', sm: 'calc(50% - 6px)', md: 'calc(33.3% - 8px)' } }} />
+            <TextField label="Company path" value={form.companyPath} onChange={(e) => updateField('companyPath', e.target.value)} size="small" sx={{ width: { xs: '100%', sm: 'calc(50% - 6px)', md: 'calc(33.3% - 8px)' } }} />
+            <TextField label="Location path" value={form.locationPath} onChange={(e) => updateField('locationPath', e.target.value)} size="small" sx={{ width: { xs: '100%', sm: 'calc(50% - 6px)', md: 'calc(33.3% - 8px)' } }} />
+            <TextField label="Description path" value={form.descriptionPath} onChange={(e) => updateField('descriptionPath', e.target.value)} size="small" sx={{ width: { xs: '100%', sm: 'calc(50% - 6px)', md: 'calc(33.3% - 8px)' } }} />
           </Box>
         </Box>
       )}
 
-      <Box display="flex" gap={2} mb={3}>
+      <Box display="flex" gap={2} mb={3} flexDirection={{ xs: 'column', sm: 'row' }}>
         <Button
           variant="outlined"
           onClick={handlePreview}
           disabled={previewing}
           sx={{
+            width: { xs: '100%', sm: 'auto' },
             borderColor: '#E8336D',
             color: '#A31346',
             fontWeight: 600,
@@ -296,6 +297,7 @@ export default function JobSourcesPage() {
           onClick={handleAdd}
           disabled={submitting}
           sx={{
+            width: { xs: '100%', sm: 'auto' },
             bgcolor: '#E8336D',
             color: '#FFFFFF',
             fontWeight: 700,
@@ -336,59 +338,70 @@ export default function JobSourcesPage() {
 
       <List disablePadding>
         {sources.map((source) => (
-          <ListItem
+          <Paper
             key={source.id}
+            elevation={0}
             sx={{
               mb: 1.5,
               p: 2,
               borderRadius: 2.5,
               border: '1px solid #EFE6E8',
               bgcolor: '#FFFFFF',
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' },
+              alignItems: { xs: 'flex-start', sm: 'center' },
+              justifyContent: 'space-between',
+              gap: 1.5,
             }}
-            secondaryAction={
-              <Box display="flex" alignItems="center" gap={1}>
-                <Switch
-                  checked={source.enabled}
-                  onChange={() => handleToggle(source)}
-                  sx={{
-                    '& .MuiSwitch-switchBase.Mui-checked': {
-                      color: '#E8336D',
-                    },
-                    '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                      backgroundColor: '#E8336D',
-                    },
-                  }}
+          >
+            <Box sx={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+              <Box display="flex" alignItems="center" gap={1} flexWrap="wrap" mb={0.5}>
+                <Typography variant="body1" sx={{ fontWeight: 700, color: '#241019' }}>
+                  {source.name}
+                </Typography>
+                <Chip
+                  label={source.sourceType === 'JSON_API' ? 'JSON API' : 'RSS Feed'}
+                  size="small"
+                  sx={{ bgcolor: '#FFF9FA', color: '#8A6E76', border: '1px solid #EFE6E8', fontSize: '0.75rem' }}
                 />
-                {source.ownedByCurrentUser && (
-                  <Tooltip title="Delete source">
-                    <IconButton edge="end" onClick={() => handleDelete(source)} sx={{ color: '#8A6E76', '&:hover': { color: '#A31346' } }}>
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
+                {!source.enabled && (
+                  <Chip label="Disabled" size="small" sx={{ bgcolor: '#FFF9FA', color: '#8A6E76', fontSize: '0.75rem' }} />
                 )}
               </Box>
-            }
-          >
-            <ListItemText
-              primary={
-                <Box display="flex" alignItems="center" gap={1}>
-                  <Typography variant="body1" sx={{ fontWeight: 700, color: '#241019' }}>
-                    {source.name}
-                  </Typography>
-                  <Chip
-                    label={source.sourceType === 'JSON_API' ? 'JSON API' : 'RSS Feed'}
-                    size="small"
-                    sx={{ bgcolor: '#FFF9FA', color: '#8A6E76', border: '1px solid #EFE6E8', fontSize: '0.75rem' }}
-                  />
-                  {!source.enabled && (
-                    <Chip label="Disabled" size="small" sx={{ bgcolor: '#FFF9FA', color: '#8A6E76', fontSize: '0.75rem' }} />
-                  )}
-                </Box>
-              }
-              secondary={source.feedUrl}
-              secondaryTypographyProps={{ fontSize: '0.8rem', color: '#8A6E76' }}
-            />
-          </ListItem>
+              <Typography
+                variant="body2"
+                sx={{
+                  fontSize: '0.8rem',
+                  color: '#8A6E76',
+                  wordBreak: 'break-all',
+                }}
+              >
+                {source.feedUrl}
+              </Typography>
+            </Box>
+
+            <Box display="flex" alignItems="center" gap={1} sx={{ alignSelf: { xs: 'flex-end', sm: 'center' } }}>
+              <Switch
+                checked={source.enabled}
+                onChange={() => handleToggle(source)}
+                sx={{
+                  '& .MuiSwitch-switchBase.Mui-checked': {
+                    color: '#E8336D',
+                  },
+                  '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                    backgroundColor: '#E8336D',
+                  },
+                }}
+              />
+              {source.ownedByCurrentUser && (
+                <Tooltip title="Delete source">
+                  <IconButton onClick={() => handleDelete(source)} sx={{ color: '#8A6E76', '&:hover': { color: '#A31346' } }}>
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              )}
+            </Box>
+          </Paper>
         ))}
         {sources.length === 0 && (
           <Typography variant="body2" sx={{ color: '#8A6E76', fontStyle: 'italic' }}>

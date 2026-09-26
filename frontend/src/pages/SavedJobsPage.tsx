@@ -148,11 +148,11 @@ export default function SavedJobsPage() {
                 },
               }}
             >
-              <CardContent sx={{ p: 3 }}>
+              <CardContent sx={{ p: { xs: 2.5, sm: 3 } }}>
                 {job.title ? (
                   <>
                     <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1}>
-                      <Typography variant="h6" sx={{ fontSize: '1.15rem', color: '#241019', lineHeight: 1.3 }}>
+                      <Typography variant="h6" sx={{ fontSize: { xs: '1.05rem', sm: '1.15rem' }, color: '#241019', lineHeight: 1.3 }}>
                         {job.title}
                       </Typography>
                       {job.appliedManually && (
@@ -201,7 +201,7 @@ export default function SavedJobsPage() {
                 </Typography>
               </CardContent>
 
-              <CardActions sx={{ px: 3, pb: 3, pt: 0, display: 'flex', gap: 1 }}>
+              <CardActions sx={{ px: { xs: 2.5, sm: 3 }, pb: { xs: 2.5, sm: 3 }, pt: 0, display: 'flex', gap: 1 }}>
                 {job.sourceUrl && (
                   <Button
                     size="small"

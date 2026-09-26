@@ -112,8 +112,8 @@ export default function HomePage() {
               <Typography
                 variant="h1"
                 sx={{
-                  fontSize: { xs: '2.4rem', sm: '3.2rem', md: '3.8rem' },
-                  lineHeight: 1.12,
+                  fontSize: { xs: '1.85rem', sm: '3.0rem', md: '3.8rem' },
+                  lineHeight: 1.15,
                   letterSpacing: '-0.025em',
                   mb: 2.5,
                   color: '#241019',
@@ -269,11 +269,14 @@ export default function HomePage() {
               className="hero-card-stack"
               sx={{
                 position: 'relative',
-                minHeight: { xs: 340, md: 400 },
+                minHeight: { xs: 320, sm: 360, md: 400 },
+                width: '100%',
+                overflow: 'hidden',
                 display: 'flex',
                 justifyContent: 'center',
                 alignItems: 'center',
                 perspective: '1000px',
+                py: 2,
               }}
             >
               {/* Back Card 2 (Bottom - offset right + rotate) */}
@@ -480,7 +483,14 @@ export default function HomePage() {
 
       {/* Featured Live Preview Listings */}
       <Box mb={6}>
-        <Box display="flex" justifyContent="space-between" alignItems="flex-end" mb={3}>
+        <Box
+          display="flex"
+          flexDirection={{ xs: 'column', sm: 'row' }}
+          justifyContent="space-between"
+          alignItems={{ xs: 'flex-start', sm: 'flex-end' }}
+          gap={2}
+          mb={3}
+        >
           <Box>
             <Typography variant="h4" sx={{ mb: 1 }}>
               Featured Remote Listings

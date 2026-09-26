@@ -141,7 +141,7 @@ export default function ResumesPage() {
         {...getRootProps()}
         elevation={0}
         sx={{
-          p: 5,
+          p: { xs: 2.5, sm: 5 },
           mb: 4,
           textAlign: 'center',
           border: '2px dashed',
@@ -173,7 +173,7 @@ export default function ResumesPage() {
         >
           <CloudUploadIcon sx={{ fontSize: 28 }} />
         </Box>
-        <Typography variant="h6" sx={{ fontSize: '1.1rem', color: '#241019', mb: 0.5 }}>
+        <Typography variant="h6" sx={{ fontSize: { xs: '1rem', sm: '1.1rem' }, color: '#241019', mb: 0.5 }}>
           {isDragActive ? 'Drop your resume file here' : 'Drag & drop your resume here, or browse'}
         </Typography>
         <Typography variant="body2" sx={{ color: '#8A6E76' }}>
@@ -188,9 +188,8 @@ export default function ResumesPage() {
 
       <List disablePadding>
         {resumes.map((r) => (
-          <ListItem
+          <Paper
             key={r.id}
-            component={Paper}
             elevation={0}
             sx={{
               mb: 1.5,
@@ -200,35 +199,30 @@ export default function ResumesPage() {
               bgcolor: '#FFFFFF',
               display: 'flex',
               alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 1.5,
             }}
-            secondaryAction={
-              <Tooltip title="Delete resume">
-                <IconButton edge="end" onClick={() => handleDelete(r.id)} sx={{ color: '#8A6E76', '&:hover': { color: '#A31346' } }}>
-                  <DeleteIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-            }
           >
-            <Box
-              sx={{
-                width: 40,
-                height: 40,
-                borderRadius: 2,
-                bgcolor: '#FFF9FA',
-                border: '1px solid #EFE6E8',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                mr: 2,
-                color: '#E8336D',
-              }}
-            >
-              <DescriptionIcon />
-            </Box>
-            <ListItemText
-              primary={
-                <Box display="flex" alignItems="center" gap={1}>
-                  <Typography variant="body1" sx={{ fontWeight: 600, color: '#241019' }}>
+            <Box display="flex" alignItems="center" gap={1.5} sx={{ minWidth: 0, flex: 1 }}>
+              <Box
+                sx={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 2,
+                  bgcolor: '#FFF9FA',
+                  border: '1px solid #EFE6E8',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  color: '#E8336D',
+                }}
+              >
+                <DescriptionIcon />
+              </Box>
+              <Box sx={{ minWidth: 0, flex: 1 }}>
+                <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
+                  <Typography variant="body1" sx={{ fontWeight: 600, color: '#241019', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {r.label}
                   </Typography>
                   {r.isDefault && (
@@ -240,11 +234,17 @@ export default function ResumesPage() {
                     />
                   )}
                 </Box>
-              }
-              secondary={`Uploaded ${new Date(r.uploadedAt).toLocaleDateString()}`}
-              secondaryTypographyProps={{ fontSize: '0.8rem', color: '#8A6E76' }}
-            />
-          </ListItem>
+                <Typography variant="caption" sx={{ fontSize: '0.8rem', color: '#8A6E76', display: 'block' }}>
+                  Uploaded {new Date(r.uploadedAt).toLocaleDateString()}
+                </Typography>
+              </Box>
+            </Box>
+            <Tooltip title="Delete resume">
+              <IconButton onClick={() => handleDelete(r.id)} sx={{ color: '#8A6E76', '&:hover': { color: '#A31346' }, flexShrink: 0 }}>
+                <DeleteIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Paper>
         ))}
 
         {resumes.length === 0 && (
