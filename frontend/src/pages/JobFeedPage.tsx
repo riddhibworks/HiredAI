@@ -911,83 +911,85 @@ export default function JobFeedPage() {
                 },
               }}
             >
-              <CardContent sx={{ p: { xs: 2.5, sm: 3 } }}>
-                {/* Header info */}
-                <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1.5} gap={1}>
-                  <Box>
-                    <Typography variant="h6" sx={{ fontSize: { xs: '1.05rem', sm: '1.15rem' }, color: '#241019', mb: 0.5, lineHeight: 1.3 }}>
-                      {job.title}
-                    </Typography>
-                    <Typography variant="body2" sx={{ color: '#8A6E76', fontWeight: 500 }}>
-                      {job.company} — <Box component="span" sx={{ color: '#241019' }}>{job.location}</Box>
-                    </Typography>
+              <CardContent sx={{ p: { xs: 2.5, sm: 3 }, display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
+                <Box sx={{ flexGrow: 1 }}>
+                  {/* Header info */}
+                  <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1.5} gap={1}>
+                    <Box>
+                      <Typography variant="h6" sx={{ fontSize: { xs: '1.05rem', sm: '1.15rem' }, color: '#241019', mb: 0.5, lineHeight: 1.3 }}>
+                        {job.title}
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: '#8A6E76', fontWeight: 500 }}>
+                        {job.company} — <Box component="span" sx={{ color: '#241019' }}>{job.location}</Box>
+                      </Typography>
+                    </Box>
+
+                    {/* Match Score Badge */}
+                    {typeof job.matchScore === 'number' && (
+                      <Tooltip title="AI Match Score based on your uploaded resume">
+                        <Chip
+                          label={`${job.matchScore}% match`}
+                          size="small"
+                          sx={{
+                            bgcolor: '#FFD9E4',
+                            color: '#A31346',
+                            fontWeight: 700,
+                            fontSize: '0.75rem',
+                            height: 26,
+                            flexShrink: 0,
+                            outline: 'none !important',
+                          }}
+                        />
+                      </Tooltip>
+                    )}
                   </Box>
 
-                  {/* Match Score Badge */}
-                  {typeof job.matchScore === 'number' && (
-                    <Tooltip title="AI Match Score based on your uploaded resume">
+                  {/* Platform & Salary Tags */}
+                  <Box display="flex" gap={1} flexWrap="wrap" mt={2} mb={2}>
+                    <Chip
+                      label={job.platform}
+                      size="small"
+                      sx={{
+                        bgcolor: '#FFF9FA',
+                        color: '#8A6E76',
+                        border: '1px solid #EFE6E8',
+                        fontSize: '0.75rem',
+                        outline: 'none !important',
+                      }}
+                    />
+                    {job.salaryRange && (
                       <Chip
-                        label={`${job.matchScore}% match`}
+                        label={job.salaryRange}
                         size="small"
                         sx={{
-                          bgcolor: '#FFD9E4',
-                          color: '#A31346',
-                          fontWeight: 700,
+                          bgcolor: '#FFF9FA',
+                          color: '#241019',
+                          fontWeight: 600,
                           fontSize: '0.75rem',
-                          height: 26,
-                          flexShrink: 0,
                           outline: 'none !important',
                         }}
                       />
-                    </Tooltip>
-                  )}
-                </Box>
-
-                {/* Platform & Salary Tags */}
-                <Box display="flex" gap={1} flexWrap="wrap" mt={2} mb={2}>
-                  <Chip
-                    label={job.platform}
-                    size="small"
-                    sx={{
-                      bgcolor: '#FFF9FA',
-                      color: '#8A6E76',
-                      border: '1px solid #EFE6E8',
-                      fontSize: '0.75rem',
-                      outline: 'none !important',
-                    }}
-                  />
-                  {job.salaryRange && (
-                    <Chip
-                      label={job.salaryRange}
-                      size="small"
-                      sx={{
-                        bgcolor: '#FFF9FA',
-                        color: '#241019',
-                        fontWeight: 600,
-                        fontSize: '0.75rem',
-                        outline: 'none !important',
-                      }}
-                    />
-                  )}
-                  {job.appliedManually && (
-                    <Chip
-                      label="Applied"
-                      size="small"
-                      sx={{
-                        bgcolor: '#FFF9FA',
-                        color: '#241019',
-                        border: '1px solid #D8C3C9',
-                        fontSize: '0.75rem',
-                        fontWeight: 600,
-                        outline: 'none !important',
-                      }}
-                    />
-                  )}
+                    )}
+                    {job.appliedManually && (
+                      <Chip
+                        label="Applied"
+                        size="small"
+                        sx={{
+                          bgcolor: '#FFF9FA',
+                          color: '#241019',
+                          border: '1px solid #D8C3C9',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          outline: 'none !important',
+                        }}
+                      />
+                    )}
+                  </Box>
                 </Box>
 
                 {/* Match Score Bar */}
-                {typeof job.matchScore === 'number' && (
-                  <Box mt={1.5}>
+                {typeof job.matchScore === 'number' ? (
+                  <Box sx={{ mt: 'auto', pt: 1.5 }}>
                     <LinearProgress
                       variant="determinate"
                       value={Math.min(job.matchScore, 100)}
@@ -1002,6 +1004,8 @@ export default function JobFeedPage() {
                       }}
                     />
                   </Box>
+                ) : (
+                  <Box sx={{ mt: 'auto', height: 5 }} />
                 )}
               </CardContent>
 
