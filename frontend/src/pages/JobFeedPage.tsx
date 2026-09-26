@@ -266,7 +266,7 @@ export default function JobFeedPage() {
         p: '6px 14px',
         bgcolor: '#FFF9FA',
         border: '1.5px solid #EFE6E8',
-        borderRadius: 50,
+        borderRadius: 2.5,
         minHeight: 40,
         boxSizing: 'border-box',
         outline: 'none !important',
@@ -626,32 +626,44 @@ export default function JobFeedPage() {
           component="form"
           onSubmit={handleSearchSubmit}
           sx={{
-            p: 2.5,
+            p: { xs: 2.5, md: 3 },
+            px: { xs: 2.5, md: 3.5 },
             mb: 4,
             bgcolor: '#FFFFFF',
             border: '1px solid #EFE6E8',
-            borderRadius: 50,
+            borderRadius: 4,
+            boxShadow: '0 4px 20px rgba(36, 16, 25, 0.03)',
             outline: 'none !important',
-            boxShadow: 'none !important',
           }}
         >
-          <Box display="flex" alignItems="center" gap={1} mb={2} px={1}>
-            <FilterListIcon sx={{ color: '#A31346', fontSize: 20 }} />
-            <Typography variant="subtitle2" sx={{ color: '#241019', fontWeight: 700, fontSize: '0.95rem' }}>
-              Filter listings
-            </Typography>
+          <Box display="flex" alignItems="center" justifyContent="space-between" mb={2.5}>
+            <Box display="flex" alignItems="center" gap={1}>
+              <FilterListIcon sx={{ color: '#A31346', fontSize: 20 }} />
+              <Typography variant="subtitle2" sx={{ color: '#241019', fontWeight: 700, fontSize: '0.95rem' }}>
+                Filter listings
+              </Typography>
+            </Box>
+            {activeFilterCount > 0 && (
+              <Button
+                size="small"
+                onClick={handleResetFilters}
+                sx={{ color: '#8A6E76', fontSize: '0.8rem', fontWeight: 600, outline: 'none !important' }}
+              >
+                Clear all filters
+              </Button>
+            )}
           </Box>
 
           <Box
             sx={{
               display: 'flex',
               flexDirection: 'row',
-              gap: 1.5,
+              gap: 2,
               alignItems: 'center',
               width: '100%',
             }}
           >
-            <Box sx={{ flex: 1.3, minWidth: 0 }}>
+            <Box sx={{ flex: 1.4, minWidth: 0 }}>
               {renderKeywordChipInput('Type keyword & press Enter')}
             </Box>
             <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -674,11 +686,11 @@ export default function JobFeedPage() {
                   WebkitTapHighlightColor: 'transparent',
                   '& .MuiOutlinedInput-root': {
                     bgcolor: '#FFF9FA',
-                    borderRadius: 50,
+                    borderRadius: 2.5,
                     outline: 'none !important',
                     boxShadow: 'none !important',
                     transition: 'all 0.2s ease',
-                    '& fieldset': { borderColor: '#EFE6E8', borderWidth: '1.5px', borderRadius: 50 },
+                    '& fieldset': { borderColor: '#EFE6E8', borderWidth: '1.5px', borderRadius: 2.5 },
                     '&:hover fieldset': { borderColor: '#E8336D' },
                     '&.Mui-focused': {
                       bgcolor: '#FFFFFF',
@@ -686,7 +698,7 @@ export default function JobFeedPage() {
                     '&.Mui-focused fieldset': {
                       borderColor: '#E8336D',
                       borderWidth: '1.5px',
-                      borderRadius: 50,
+                      borderRadius: 2.5,
                     },
                   },
                 }}
@@ -705,11 +717,11 @@ export default function JobFeedPage() {
                   WebkitTapHighlightColor: 'transparent',
                   '& .MuiOutlinedInput-root': {
                     bgcolor: '#FFF9FA',
-                    borderRadius: 50,
+                    borderRadius: 2.5,
                     outline: 'none !important',
                     boxShadow: 'none !important',
                     transition: 'all 0.2s ease',
-                    '& fieldset': { borderColor: '#EFE6E8', borderWidth: '1.5px', borderRadius: 50 },
+                    '& fieldset': { borderColor: '#EFE6E8', borderWidth: '1.5px', borderRadius: 2.5 },
                     '&:hover fieldset': { borderColor: '#E8336D' },
                     '&.Mui-focused': {
                       bgcolor: '#FFFFFF',
@@ -717,7 +729,7 @@ export default function JobFeedPage() {
                     '&.Mui-focused fieldset': {
                       borderColor: '#E8336D',
                       borderWidth: '1.5px',
-                      borderRadius: 50,
+                      borderRadius: 2.5,
                     },
                   },
                 }}
@@ -743,11 +755,11 @@ export default function JobFeedPage() {
                   WebkitTapHighlightColor: 'transparent',
                   '& .MuiOutlinedInput-root': {
                     bgcolor: '#FFF9FA',
-                    borderRadius: 50,
+                    borderRadius: 2.5,
                     outline: 'none !important',
                     boxShadow: 'none !important',
                     transition: 'all 0.2s ease',
-                    '& fieldset': { borderColor: '#EFE6E8', borderWidth: '1.5px', borderRadius: 50 },
+                    '& fieldset': { borderColor: '#EFE6E8', borderWidth: '1.5px', borderRadius: 2.5 },
                     '&:hover fieldset': { borderColor: '#E8336D' },
                     '&.Mui-focused': {
                       bgcolor: '#FFFFFF',
@@ -755,7 +767,7 @@ export default function JobFeedPage() {
                     '&.Mui-focused fieldset': {
                       borderColor: '#E8336D',
                       borderWidth: '1.5px',
-                      borderRadius: 50,
+                      borderRadius: 2.5,
                     },
                   },
                 }}
@@ -767,22 +779,21 @@ export default function JobFeedPage() {
             </Box>
             <Button
               type="submit"
-              variant="outlined"
+              variant="contained"
               disabled={loading}
               sx={{
                 height: 40,
-                px: 3,
+                px: 3.5,
                 whiteSpace: 'nowrap',
-                borderColor: '#E8336D',
-                color: '#A31346',
-                fontWeight: 600,
-                borderRadius: 50,
+                bgcolor: '#E8336D',
+                color: '#FFFFFF',
+                fontWeight: 700,
+                borderRadius: 2.5,
                 flexShrink: 0,
                 outline: 'none !important',
                 boxShadow: 'none !important',
                 '&:hover': {
-                  borderColor: '#A31346',
-                  bgcolor: '#FFF0F4',
+                  bgcolor: '#A31346',
                 },
               }}
             >
