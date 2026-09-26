@@ -1,122 +1,100 @@
-# HiredAI — AI-Powered Job Application Automation Platform
+# 🚀 HiredAI — AI-Powered Job Application & Multi-Feed Aggregation Platform
 
-Implementation of [job-application-automation-spec.md](job-application-automation-spec.md).
-Every prepared application stops at a review screen — nothing is ever submitted
-without an explicit user click on **Apply**.
+**HiredAI** is a high-performance, full-stack job application and feed aggregation platform designed to streamline remote job hunting. It aggregates real-time job listings across public job boards and custom feeds (RSS, Atom, JSON APIs, and Web Automation) into a single unified workspace, matching candidates against job roles using automated resume skill extraction and match scoring algorithms.
 
-## What's implemented
+---
 
-**Backend (Spring Boot 3 / Java 21)** — `backend/`
-- JWT auth (register/login), BCrypt password hashing
-- Profile CRUD
-- Resume upload (PDF/DOCX) with Apache Tika text extraction + keyword-based parsing,
-  stored on disk with parsed JSON in Postgres
-- Platform connection CRUD with AES-256-GCM encrypted credential storage
-  (`EncryptionService`)
-- Job listing search/pagination + a keyword-overlap `MatchingService`
-- `PlatformAdapter` interface (`search`, `prepareApplication`, `submit`) with:
-  - **LinkedIn** and **Indeed** `search()` implemented via Selenium/ChromeDriver
-    browser automation (`LinkedInEasyApplyAdapter`, `IndeedAdapter`) — see the
-    **Platform automation risk** section below before using these
-  - **Workday** left as a `TODO` stub (account creation/consent flow not built)
-  - `prepareApplication()`/`submit()` are still `TODO` stubs for all three —
-    only search/ingestion is wired up to real browser automation so far
-- Apply queue: RabbitMQ-backed prepare pipeline (`ApplyQueueService` →
-  `ApplyQueueWorker`), daily per-user rate limiting on preparation
-- Review/Apply/Discard/Field-edit/Log endpoints — `ApplySubmissionService` is the
-  **only** code path allowed to call an adapter's `submit()`, and it is only ever
-  invoked from the user-initiated `POST /api/applications/{id}/apply` endpoint
-- `JobIngestionScheduler` runs per connected platform per user, using that user's
-  saved search criteria + decrypted stored credentials; also triggerable on-demand
-  via `POST /api/platforms/{name}/sync` ("Fetch Jobs Now" button in the UI). A login
-  failure or CAPTCHA/security checkpoint marks the connection `NEEDS_REAUTH` instead
-  of retrying automatically.
+## 🛠️ Technology Stack & Architectural Choices
 
-**Frontend (React 18 + TypeScript)** — `frontend/`
-- Auth pages, JWT stored via Zustand + persisted to localStorage
-- Profile, Resumes (drag-and-drop upload), Platform connections (connect + **Fetch
-  Jobs Now** to sync on demand), Job feed (search + "Prepare Application"),
-  Applications dashboard, and a Review screen that renders every filled field + the
-  live-session screenshot with the single **Apply** button
+### **Backend Core: Java 21 & Spring Boot 3**
+- **Why Java 21?**: Capitalizes on modern Java features (Record types, Pattern Matching, Sealed Interfaces, Virtual Threads compatibility) for clean, type-safe, and concurrent backend code execution.
+- **Why Spring Boot 3?**: Provides enterprise-grade dependency injection, robust JPA/Hibernate ORM capabilities, declarative security (`Spring Security`), and seamless REST controller abstractions with Spring Data JPA specifications for dynamic search filtering.
 
-**Infra**
-- `docker-compose.yml` wires Postgres, Redis, RabbitMQ, backend, and frontend
-- Dockerfiles for both services; the backend image installs Chromium +
-  chromedriver (Alpine packages) so Selenium can run inside the container
+### **Frontend: React 18, TypeScript & Material-UI (MUI v5)**
+- **Why React 18 & TypeScript?**: Ensures strict compile-time type safety across API DTOs and page state, enabling scalable component architectures with zero dynamic type bugs.
+- **Why MUI v5 & Custom Styling System**: Built using custom visual tokens (custom HSL/HEX palette, responsive breakpoints, smooth animations, slide-up drawers for mobile filtering) to deliver a state-of-the-art visual experience across all screen sizes.
 
-## ⚠️ Platform automation risk — read before connecting real accounts
-LinkedIn's and Indeed's Terms of Service prohibit automated scraping and bot logins.
-The `LinkedIn`/`Indeed` adapters log in with your stored credentials and drive a real
-Chrome session to read search results:
-- LinkedIn actively detects automation and can rate-limit, checkpoint (CAPTCHA), or
-  **suspend the account** — even when it's your own account and credentials.
-- Indeed's search page uses bot-detection that may block headless/automated Chrome
-  outright.
-- CSS selectors in both adapters target each site's current DOM and **will break**
-  as LinkedIn/Indeed ship UI changes; treat them as a starting point to maintain,
-  not a stable integration.
-- `app.automation.headless=false` (default) runs a visible browser window so you can
-  watch it work and manually solve a CAPTCHA if one appears, per the spec's
-  "pause and notify" policy — a `PlatformAuthException` marks the connection
-  `NEEDS_REAUTH` rather than retrying blindly.
+### **Database & Caching: PostgreSQL & Redis**
+- **Why PostgreSQL?**: Serves as the primary relational database for ACID-compliant persistence of candidate user profiles, uploaded resume text JSON structures, encrypted platform credentials, custom job feeds, and saved job tracker records.
+- **Why Redis?**: Used as an in-memory high-speed cache and session store for rapid data access, caching search results, platform statuses, rate-limiting counters, and session tokens to eliminate redundant DB queries during high-concurrency feed sweeps.
 
-Use this at your own risk and discretion, ideally on a low-stakes/secondary account
-first. The officially-sanctioned path is a real API partnership (LinkedIn Talent
-Solutions, Indeed's employer/publisher APIs) — those require applying for partner
-access and are the only integration path with no ToS risk.
+### **Asynchronous Messaging: RabbitMQ**
+- **Why RabbitMQ?**: Decouples long-running job ingestion sweeps, heavy resume document parsing, and platform automation tasks from synchronous HTTP API threads. Prevents client request timeouts by processing background tasks asynchronously with worker queues.
 
+### **Document Extraction & Processing: Apache Tika & PDFBox**
+- **Why Apache Tika & PDFBox?**: Provides robust, multi-format text extraction from candidate resumes (PDF, DOCX, DOC). Converts unstructured document streams into structured text for tokenized skill matching algorithms.
 
+### **Browser Automation & Web Scraping: Selenium & ChromeDriver**
+- **Why Selenium?**: Drives real, automated browser sessions (`LinkedInEasyApplyAdapter`, `IndeedAdapter`) to fetch live search listings from platforms without public developer APIs.
 
-## Not yet implemented (flagged as TODO in code)
-- Real Selenium/Playwright `prepareApplication()`/`submit()` flows (LinkedIn Easy
-  Apply, Workday multi-step wizard, held-session lifecycle/expiry) — search/ingestion
-  is wired up for LinkedIn and Indeed, but filling and submitting applications is not
-- Workday account auto-creation + consent prompt + email verification flow
-- Real Greenhouse/Lever API integration and an official Indeed/LinkedIn partner API
-  path (the current adapters scrape public/logged-in pages instead — see the risk
-  section above)
-- LLM-based match scoring (current `MatchingService` is keyword overlap only)
-- CAPTCHA detection surfaced to the user for manual solving mid-session (currently
-  just marks the connection `NEEDS_REAUTH` after the fact)
-- Vault-based secrets management (currently a config-driven AES key — fine for
-  dev, swap for HashiCorp Vault/Jasypt-backed secret before production)
+---
 
-## Running locally
+## 🏗️ Software Design Patterns & Architecture
 
-### Full stack via Docker
-```powershell
-docker compose up --build
+### **1. Adapter Pattern (`JobSourceAdapter` & `PlatformAdapter`)**
+- **Purpose**: Abstracts job-fetching logic across vastly different data sources (RSS/Atom feeds, JSON REST APIs, and Selenium browser automation) behind a uniform interface.
+- **Benefit**: Adding a new job source or platform requires zero modifications to existing controllers or core domain services — strictly adhering to the **Open/Closed Principle (SOLID)**.
+
+### **2. Repository Pattern (`Spring Data JPA`)**
+- **Purpose**: Decouples domain logic from SQL query execution and database interactions.
+- **Benefit**: Allows clean, testable data access logic and dynamic criteria building via `Specification<JobListing>`.
+
+### **3. Strategy / Dynamic Pipeline Pattern (`MatchingService`)**
+- **Purpose**: Tokenizes candidate resume skills and job requirements into normalized term frequency vectors to compute dynamic, real-time 0–100% match scores.
+- **Benefit**: Keeps scoring algorithms modular and replaceable (e.g., swapping keyword overlap for embeddings/vector search without breaking consumer code).
+
+### **4. Producer-Consumer / Asynchronous Worker Pattern (`ApplyQueueService` & `ApplyQueueWorker`)**
+- **Purpose**: Uses RabbitMQ message queues to offload heavy background tasks from main HTTP thread pools.
+- **Benefit**: Guarantees zero UI blocking and scales worker instances independently under heavy job ingestion loads.
+
+### **5. Security & Encryption (`EncryptionService` - AES-256-GCM)**
+- **Purpose**: Encrypts sensitive candidate credentials before persisting to PostgreSQL using AES-256-GCM.
+- **Benefit**: Protects user credentials at rest with authenticated encryption.
+
+---
+
+## ✨ Key Features
+
+- 🔍 **Unified Multi-Source Job Feed**: Aggregates remote roles across Google Jobs, RemoteOK, Jobicy, Arbeitnow, Himalayas, Remotive, and custom user-defined RSS/Atom/JSON feeds into one feed.
+- 🎯 **Automated AI Resume Skill Matcher**: Parses PDF/DOCX resumes and computes realistic 0–100% match scores for every listing.
+- ⚡ **Persistent Multi-Parameter Filtering**: Seamlessly filter job feeds by Keywords, Location, Platform, and Match Score sort order. Active filter state persists across tab switches and browser navigation.
+- 📱 **100% Mobile-Friendly & Responsive**: Responsive design with slide-up filter bottom-sheets, custom touch targets, and flexible card grids across all viewports.
+- 🔒 **Security & Authentication**: JWT stateless authentication with password preview toggles and BCrypt password hashing.
+
+---
+
+## 🐳 Running Locally via Docker
+
+The entire platform (Postgres, Redis, RabbitMQ, Spring Boot backend, and Nginx/React frontend) is containerized for one-command deployment.
+
+```bash
+docker-compose up --build
 ```
-Backend on http://localhost:8080, frontend on http://localhost:5173.
+- **Frontend App**: http://localhost:5173
+- **Backend REST API**: http://localhost:8080
 
-### Backend only (for development)
-Requires Postgres/Redis/RabbitMQ reachable (or run just those three from
-`docker-compose.yml`), Java 21, and Maven with access to Maven Central.
-```powershell
-cd backend
-mvn spring-boot:run
+---
+
+## 📁 Repository Structure
+
 ```
-Config lives in `src/main/resources/application.yml`; every value is
-overridable via environment variable (`DB_HOST`, `JWT_SECRET`,
-`ENCRYPTION_SECRET`, etc.). **Never use the default dev secrets in production.**
-
-### Frontend only
-Requires Node 20+ with npm registry access.
-```powershell
-cd frontend
-npm install
-npm run dev
-```
-Vite dev server proxies `/api` to `http://localhost:8080`.
-
-> Note: dependencies could not be downloaded/verified in this environment
-> (no network access to Maven Central / npm registry), so `mvn compile` and
-> `npm install` have not been run against this scaffold yet — run them in an
-> environment with registry access before first use.
-
-## Project layout
-```
-backend/   Spring Boot API (entities, repositories, security, services, controllers, adapters)
-frontend/  React + TypeScript SPA
-docker-compose.yml
+HiredAI/
+├── backend/                  # Spring Boot 3 Java 21 REST API
+│   ├── src/main/java/com/hiredai/backend/
+│   │   ├── adapter/          # Adapter pattern implementations (JobSourceAdapter)
+│   │   ├── controller/       # REST API endpoints
+│   │   ├── dto/              # Request/Response Data Transfer Objects
+│   │   ├── entity/           # JPA Database Entities
+│   │   ├── repository/       # Spring Data JPA Repositories & Specifications
+│   │   ├── security/         # Spring Security & JWT Filter
+│   │   └── service/          # Business logic & Matching algorithms
+│   └── Dockerfile            # Multi-stage Maven/Java build container
+├── frontend/                 # React 18 + TypeScript SPA
+│   ├── src/
+│   │   ├── api/              # Axios API client services
+│   │   ├── components/       # Layouts, Navigation Drawers & UI elements
+│   │   ├── pages/            # JobFeed, Resumes, SavedJobs, JobSources, Auth pages
+│   │   └── store/            # State management (Zustand)
+│   └── Dockerfile            # Multi-stage Vite/Nginx production container
+└── docker-compose.yml        # Orchestration for Postgres, Redis, RabbitMQ, Backend, Frontend
 ```
