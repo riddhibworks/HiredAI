@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Alert,
   Box,
@@ -24,6 +25,8 @@ import RssFeedIcon from '@mui/icons-material/RssFeed';
 import ApiIcon from '@mui/icons-material/Api';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 
+import { useAuthStore } from '../store/authStore';
+
 import { jobSourcesApi } from '../api/jobSources';
 import type { BuiltInJobSourceResponse, JobSourceRequest, JobSourceResponse, JobSourceType, ParsedJobPreview } from '../types/api';
 
@@ -42,6 +45,9 @@ const EMPTY_FORM: JobSourceRequest = {
 };
 
 export default function JobSourcesPage() {
+  const navigate = useNavigate();
+  const token = useAuthStore((s) => s.token);
+
   const [sources, setSources] = useState<JobSourceResponse[]>([]);
   const [builtInSources, setBuiltInSources] = useState<BuiltInJobSourceResponse[]>([]);
   const [form, setForm] = useState<JobSourceRequest>(EMPTY_FORM);
@@ -51,11 +57,13 @@ export default function JobSourcesPage() {
   const [previewResults, setPreviewResults] = useState<ParsedJobPreview[] | null>(null);
 
   const load = () => {
-    jobSourcesApi.list().then(setSources).catch(() => setError('Failed to load job sources'));
+    if (token) {
+      jobSourcesApi.list().then(setSources).catch(() => setError('Failed to load job sources'));
+    }
     jobSourcesApi.listBuiltIn().then(setBuiltInSources).catch(() => {});
   };
 
-  useEffect(load, []);
+  useEffect(load, [token]);
 
   const updateField = (field: keyof JobSourceRequest, value: string) => {
     setForm((f) => ({ ...f, [field]: value }));
@@ -188,8 +196,26 @@ export default function JobSourcesPage() {
         Add custom job source
       </Typography>
 
-      <ToggleButtonGroup
-        value={form.sourceType}
+      {!token ? (
+        <Paper elevation={0} sx={{ p: 3, bgcolor: '#FFF9FA', border: '1px dashed #EFE6E8', borderRadius: 3, mb: 4 }}>
+          <Typography variant="subtitle1" sx={{ color: '#241019', fontWeight: 700, mb: 0.5 }}>
+            Sign in to add custom job feeds
+          </Typography>
+          <Typography variant="body2" sx={{ color: '#8A6E76', mb: 2 }}>
+            You can aggregate your own custom RSS/Atom feeds and JSON APIs into your feed by signing in.
+          </Typography>
+          <Button
+            variant="contained"
+            onClick={() => navigate('/login')}
+            sx={{ bgcolor: '#E8336D', color: '#FFFFFF', fontWeight: 700 }}
+          >
+            Sign in to add custom sources
+          </Button>
+        </Paper>
+      ) : (
+        <Box>
+          <ToggleButtonGroup
+            value={form.sourceType}
         exclusive
         onChange={(_, value) => handleTypeChange(value)}
         size="small"
@@ -365,11 +391,13 @@ export default function JobSourcesPage() {
           </ListItem>
         ))}
         {sources.length === 0 && (
-          <Typography variant="body2" sx={{ color: '#8A6E76', italic: true }}>
+          <Typography variant="body2" sx={{ color: '#8A6E76', fontStyle: 'italic' }}>
             No custom sources added yet.
           </Typography>
         )}
       </List>
+        </Box>
+      )}
     </Paper>
   );
 }

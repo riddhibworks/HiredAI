@@ -41,14 +41,7 @@ export default function App() {
               </RequireAuth>
             }
           />
-          <Route
-            path="/job-sources"
-            element={
-              <RequireAuth>
-                <JobSourcesPage />
-              </RequireAuth>
-            }
-          />
+          <Route path="/job-sources" element={<JobSourcesPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

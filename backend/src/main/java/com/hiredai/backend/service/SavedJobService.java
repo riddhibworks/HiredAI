@@ -61,12 +61,18 @@ public class SavedJobService {
     }
 
     public Set<String> savedJobIdsForUser(String userId) {
+        if (userId == null) {
+            return Set.of();
+        }
         return savedJobRepository.findByUserId(userId).stream()
                 .map(SavedJob::getJobListingId)
                 .collect(Collectors.toSet());
     }
 
     public Set<String> appliedJobIdsForUser(String userId) {
+        if (userId == null) {
+            return Set.of();
+        }
         return savedJobRepository.findByUserId(userId).stream()
                 .filter(SavedJob::isAppliedManually)
                 .map(SavedJob::getJobListingId)

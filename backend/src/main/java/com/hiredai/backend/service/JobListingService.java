@@ -87,6 +87,9 @@ public class JobListingService {
     }
 
     private String defaultResumeText(String userId) {
+        if (userId == null) {
+            return null;
+        }
         return resumeRepository.findByUserId(userId).stream()
                 .filter(Resume::isDefault)
                 .findFirst()

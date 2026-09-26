@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Alert,
   Badge,
@@ -9,6 +9,11 @@ import {
   CardActions,
   CardContent,
   Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   Divider,
   Drawer,
   Grid,
@@ -25,6 +30,7 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material';
+import { useAuthStore } from '../store/authStore';
 import SearchIcon from '@mui/icons-material/Search';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
@@ -54,6 +60,10 @@ export default function JobFeedPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialKeywordParam = searchParams.get('keyword') || '';
   const initialLocation = searchParams.get('location') || '';
+
+  const navigate = useNavigate();
+  const token = useAuthStore((s) => s.token);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
 
   const [jobs, setJobs] = useState<JobListingResponse[]>([]);
   const [platforms, setPlatforms] = useState<string[]>([]);
@@ -210,6 +220,10 @@ export default function JobFeedPage() {
   };
 
   const handleToggleSave = async (job: JobListingResponse) => {
+    if (!token) {
+      setAuthModalOpen(true);
+      return;
+    }
     setBusyId(job.id);
     try {
       if (job.saved) {
@@ -226,6 +240,10 @@ export default function JobFeedPage() {
   };
 
   const handleToggleApplied = async (job: JobListingResponse) => {
+    if (!token) {
+      setAuthModalOpen(true);
+      return;
+    }
     setBusyId(job.id);
     try {
       await jobsApi.markApplied(job.id, !job.appliedManually);
@@ -1010,6 +1028,43 @@ export default function JobFeedPage() {
           )}
         </Box>
       )}
+
+      {/* Auth Prompt Dialog for Unauthenticated Users */}
+      <Dialog
+        open={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        PaperProps={{
+          sx: { borderRadius: 4, p: 1, maxWidth: 420 },
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 800, color: '#241019', fontFamily: "'Archivo', sans-serif" }}>
+          Sign in required
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ color: '#8A6E76', fontSize: '0.95rem', lineHeight: 1.5 }}>
+            Saving jobs and tracking application status requires a free HiredAI account. Sign in or create an account to organize your job search.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
+          <Button onClick={() => setAuthModalOpen(false)} sx={{ color: '#8A6E76', fontWeight: 600 }}>
+            Cancel
+          </Button>
+          <Button
+            variant="outlined"
+            onClick={() => { setAuthModalOpen(false); navigate('/login'); }}
+            sx={{ borderColor: '#E8336D', color: '#A31346', fontWeight: 600 }}
+          >
+            Sign in
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => { setAuthModalOpen(false); navigate('/register'); }}
+            sx={{ bgcolor: '#E8336D', color: '#FFFFFF', fontWeight: 700 }}
+          >
+            Get started
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
