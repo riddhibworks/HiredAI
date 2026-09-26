@@ -64,7 +64,6 @@ const SOURCE_PLATFORMS = [
   { name: 'Arbeitnow', count: '280+ roles' },
   { name: 'Himalayas', count: '420+ roles' },
   { name: 'Remotive', count: '310+ roles' },
-  { name: 'Custom Feeds', count: 'RSS & JSON' },
 ];
 
 export default function HomePage() {
