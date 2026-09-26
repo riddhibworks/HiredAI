@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <linearGradient id="pinkBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E8336D" />
+      <stop offset="100%" stop-color="#A31346" />
+    </linearGradient>
+    <linearGradient id="hGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="100%" stop-color="#FFF0F4" />
+    </linearGradient>
+    <filter id="subtleShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#5A0020" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- Theme Pink Squircle Background -->
+  <rect width="512" height="512" rx="128" fill="url(#pinkBg)" />
+
+  <!-- Bold 'H' Letterform + AI Accent -->
+  <g filter="url(#subtleShadow)">
+    <!-- Left Vertical Bar -->
+    <rect x="112" y="112" width="80" height="288" rx="20" fill="url(#hGrad)" />
+    
+    <!-- Right Vertical Bar -->
+    <rect x="320" y="112" width="80" height="288" rx="20" fill="url(#hGrad)" />
+    
+    <!-- Center Horizontal Crossbar -->
+    <rect x="170" y="216" width="172" height="80" rx="16" fill="url(#hGrad)" />
+
+    <!-- AI Spark Accent (Top Right) -->
+    <path d="M 390 80 Q 390 110 420 110 Q 390 110 390 140 Q 390 110 360 110 Q 390 110 390 80 Z" fill="#FFD9E4" />
+  </g>
+</svg>

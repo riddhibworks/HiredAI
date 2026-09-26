@@ -1,0 +1,263 @@
+import { createTheme } from '@mui/material/styles';
+
+export const theme = createTheme({
+  palette: {
+    mode: 'light',
+    background: {
+      default: '#FFF9FA', // --color-bg
+      paper: '#FFFFFF',   // --color-surface
+    },
+    text: {
+      primary: '#241019',   // --color-ink
+      secondary: '#8A6E76', // --color-muted
+    },
+    primary: {
+      main: '#E8336D',     // --color-accent
+      dark: '#A31346',     // --color-accent-deep
+      light: '#FFD9E4',    // --color-accent-soft
+      contrastText: '#FFFFFF',
+    },
+    secondary: {
+      main: '#A31346',
+      light: '#FFD9E4',
+      contrastText: '#FFFFFF',
+    },
+    divider: '#EFE6E8', // --color-border
+  },
+  typography: {
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    h1: {
+      fontFamily: "'Archivo', sans-serif",
+      fontWeight: 800,
+      color: '#241019',
+      letterSpacing: '-0.02em',
+    },
+    h2: {
+      fontFamily: "'Archivo', sans-serif",
+      fontWeight: 800,
+      color: '#241019',
+      letterSpacing: '-0.02em',
+    },
+    h3: {
+      fontFamily: "'Archivo', sans-serif",
+      fontWeight: 700,
+      color: '#241019',
+      letterSpacing: '-0.015em',
+    },
+    h4: {
+      fontFamily: "'Archivo', sans-serif",
+      fontWeight: 700,
+      color: '#241019',
+      letterSpacing: '-0.01em',
+    },
+    h5: {
+      fontFamily: "'Archivo', sans-serif",
+      fontWeight: 700,
+      color: '#241019',
+    },
+    h6: {
+      fontFamily: "'Archivo', sans-serif",
+      fontWeight: 600,
+      color: '#241019',
+    },
+    subtitle1: {
+      fontFamily: "'Inter', sans-serif",
+      color: '#8A6E76',
+      lineHeight: 1.55,
+    },
+    subtitle2: {
+      fontFamily: "'Archivo', sans-serif",
+      fontWeight: 600,
+      color: '#241019',
+    },
+    body1: {
+      fontFamily: "'Inter', sans-serif",
+      fontSize: '1rem',
+      lineHeight: 1.6,
+      color: '#241019',
+    },
+    body2: {
+      fontFamily: "'Inter', sans-serif",
+      fontSize: '0.9rem',
+      lineHeight: 1.55,
+      color: '#8A6E76',
+    },
+    button: {
+      fontFamily: "'Archivo', sans-serif",
+      fontWeight: 600,
+      textTransform: 'none',
+    },
+  },
+  shape: {
+    borderRadius: 12,
+  },
+  components: {
+    MuiCssBaseline: {
+      styleOverrides: {
+        '*': {
+          WebkitTapHighlightColor: 'transparent',
+        },
+        '*:focus': {
+          outline: 'none !important',
+        },
+        '*:focus-visible': {
+          outline: 'none !important',
+        },
+        body: {
+          backgroundColor: '#FFF9FA',
+          color: '#241019',
+        },
+      },
+    },
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          borderRadius: 10,
+          padding: '10px 22px',
+          fontSize: '0.95rem',
+          fontWeight: 600,
+          boxShadow: 'none',
+          textTransform: 'none',
+          transition: 'all 0.18s ease-in-out',
+          '&:hover': {
+            boxShadow: 'none',
+          },
+        },
+        containedPrimary: {
+          backgroundColor: '#E8336D',
+          color: '#FFFFFF',
+          '&:hover': {
+            backgroundColor: '#A31346',
+          },
+          '&:focus-visible': {
+            outline: '2px solid #A31346',
+            outlineOffset: '2px',
+          },
+        },
+        outlinedPrimary: {
+          borderColor: '#E8336D',
+          color: '#A31346', // high emphasis on light bg for WCAG compliance
+          borderWidth: '1.5px',
+          '&:hover': {
+            borderWidth: '1.5px',
+            borderColor: '#A31346',
+            backgroundColor: '#FFD9E4',
+          },
+        },
+        textPrimary: {
+          color: '#A31346',
+          '&:hover': {
+            backgroundColor: '#FFD9E4',
+          },
+        },
+      },
+    },
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          backgroundColor: '#FFFFFF',
+          border: '1px solid #EFE6E8',
+          boxShadow: '0 2px 8px rgba(36, 16, 25, 0.03)',
+          borderRadius: 14,
+          transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
+          '&:hover': {
+            borderColor: '#D8C3C9',
+            boxShadow: '0 4px 16px rgba(36, 16, 25, 0.06)',
+          },
+        },
+      },
+    },
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          backgroundImage: 'none',
+          backgroundColor: '#FFFFFF',
+          border: '1px solid #EFE6E8',
+          boxShadow: '0 2px 8px rgba(36, 16, 25, 0.03)',
+          borderRadius: 14,
+        },
+      },
+    },
+    MuiChip: {
+      styleOverrides: {
+        root: {
+          fontFamily: "'Inter', sans-serif",
+          fontWeight: 500,
+          borderRadius: 8,
+        },
+        filledPrimary: {
+          backgroundColor: '#FFD9E4',
+          color: '#A31346',
+          fontWeight: 600,
+        },
+        outlinedPrimary: {
+          borderColor: '#E8336D',
+          color: '#A31346',
+        },
+      },
+    },
+    MuiTextField: {
+      defaultProps: {
+        variant: 'outlined',
+      },
+    },
+    MuiOutlinedInput: {
+      styleOverrides: {
+        root: {
+          borderRadius: 10,
+          backgroundColor: '#FFFFFF',
+          '& .MuiOutlinedInput-notchedOutline': {
+            borderColor: '#EFE6E8',
+            borderWidth: '1.5px',
+          },
+          '&:hover .MuiOutlinedInput-notchedOutline': {
+            borderColor: '#D8C3C9',
+          },
+          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+            borderColor: '#A31346',
+            borderWidth: '2px',
+          },
+        },
+      },
+    },
+    MuiInputLabel: {
+      styleOverrides: {
+        root: {
+          color: '#8A6E76',
+          textTransform: 'none',
+          '&.Mui-focused': {
+            color: '#A31346',
+          },
+        },
+      },
+    },
+    MuiTab: {
+      styleOverrides: {
+        root: {
+          fontFamily: "'Archivo', sans-serif",
+          fontWeight: 600,
+          fontSize: '0.95rem',
+          textTransform: 'none',
+          color: '#8A6E76',
+          minHeight: 48,
+          '&.Mui-selected': {
+            color: '#A31346',
+            fontWeight: 700,
+          },
+          '&:hover': {
+            color: '#241019',
+          },
+        },
+      },
+    },
+    MuiTabs: {
+      styleOverrides: {
+        indicator: {
+          backgroundColor: '#E8336D',
+          height: 3,
+          borderRadius: '3px 3px 0 0',
+        },
+      },
+    },
+  },
+});

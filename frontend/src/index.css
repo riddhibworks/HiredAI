@@ -1,0 +1,93 @@
+:root {
+  --color-bg: #FFF9FA;
+  --color-surface: #FFFFFF;
+  --color-ink: #241019;
+  --color-accent: #E8336D;
+  --color-accent-deep: #A31346;
+  --color-accent-soft: #FFD9E4;
+  --color-muted: #8A6E76;
+  --color-border: #EFE6E8;
+  --color-border-hover: #D8C3C9;
+  
+  --font-headline: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Headings typography */
+h1, h2, h3, h4, .font-headline {
+  font-family: var(--font-headline);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--color-ink);
+}
+
+/* Keyboard focus state using --color-accent-deep */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[tabindex]:focus-visible,
+.MuiButtonBase-root:focus-visible {
+  outline: 2px solid var(--color-accent-deep) !important;
+  outline-offset: 3px !important;
+  box-shadow: 0 0 0 4px rgba(163, 19, 70, 0.15) !important;
+}
+
+/* One deliberate motion moment on load for Hero card stack */
+@keyframes heroStackSettle {
+  0% {
+    opacity: 0;
+    transform: translateY(28px) rotate(-1.5deg);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) rotate(0deg);
+  }
+}
+
+.hero-card-stack {
+  animation: heroStackSettle 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-card-stack {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+/* Custom scrollbar matching palette */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #E5D5DA;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-muted);
+}
