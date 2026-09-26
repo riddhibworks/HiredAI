@@ -23,7 +23,7 @@ export default function RegisterPage() {
     try {
       const res = await authApi.register(email, password);
       setAuth(res.token, res.userId, res.email);
-      navigate('/jobs');
+      navigate('/');
     } catch (err: any) {
       setError(err.response?.data?.message ?? 'Registration failed — email may already be in use');
     } finally {

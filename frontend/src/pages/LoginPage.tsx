@@ -23,7 +23,7 @@ export default function LoginPage() {
     try {
       const res = await authApi.login(email, password);
       setAuth(res.token, res.userId, res.email);
-      navigate('/jobs');
+      navigate('/');
     } catch (err: any) {
       setError(err.response?.data?.message ?? 'Login failed — please check your credentials');
     } finally {
