@@ -30,15 +30,25 @@ public class MatchingService {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public double scoreMatch(String resumeTextOrJson, String jobTitleAndDescription) {
-        if (resumeTextOrJson == null || jobTitleAndDescription == null ||
-                resumeTextOrJson.isBlank() || jobTitleAndDescription.isBlank()) {
+        if (resumeTextOrJson == null || resumeTextOrJson.isBlank()) {
+            return 0.0;
+        }
+        Set<String> resumeTokens = extractResumeTokens(resumeTextOrJson);
+        return scoreMatch(resumeTokens, jobTitleAndDescription);
+    }
+
+    /**
+     * High-performance overload: scores a job against pre-extracted resume tokens.
+     * Prevents re-parsing candidate resume JSON thousands of times across the feed.
+     */
+    public double scoreMatch(Set<String> resumeTokens, String jobTitleAndDescription) {
+        if (resumeTokens == null || resumeTokens.isEmpty() ||
+                jobTitleAndDescription == null || jobTitleAndDescription.isBlank()) {
             return 0.0;
         }
 
-        Set<String> resumeTokens = extractResumeTokens(resumeTextOrJson);
         Set<String> jobTokens = tokenize(jobTitleAndDescription);
-
-        if (resumeTokens.isEmpty() || jobTokens.isEmpty()) {
+        if (jobTokens.isEmpty()) {
             return 0.0;
         }
 
@@ -68,7 +78,10 @@ public class MatchingService {
         return Math.round(finalScore * 10.0) / 10.0; // 1 decimal place percentage (e.g. 92.5%)
     }
 
-    private Set<String> extractResumeTokens(String textOrJson) {
+    public Set<String> extractResumeTokens(String textOrJson) {
+        if (textOrJson == null || textOrJson.isBlank()) {
+            return Set.of();
+        }
         Set<String> tokens = new HashSet<>();
 
         try {

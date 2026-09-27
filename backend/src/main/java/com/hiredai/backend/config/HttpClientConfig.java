@@ -11,9 +11,22 @@ import java.time.Duration;
 @Configuration
 public class HttpClientConfig {
 
+    /**
+     * Standard RestClient for official public job adapters (RemoteOK, Himalayas, Jobicy, Arbeitnow, etc.).
+     * Strictly bounded by 4s connect and 6s read timeouts to prevent any external slow or hung API
+     * from delaying feed ingestion or blocking background worker threads.
+     */
     @Bean
     public RestClient restClient() {
-        return RestClient.builder().build();
+        HttpClient httpClient = HttpClient.newBuilder()
+                .followRedirects(HttpClient.Redirect.NORMAL)
+                .connectTimeout(Duration.ofSeconds(4))
+                .build();
+        JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
+        requestFactory.setReadTimeout(Duration.ofSeconds(6));
+        return RestClient.builder()
+                .requestFactory(requestFactory)
+                .build();
     }
 
     /**
@@ -24,10 +37,12 @@ public class HttpClientConfig {
     public RestClient feedRestClient() {
         HttpClient httpClient = HttpClient.newBuilder()
                 .followRedirects(HttpClient.Redirect.NEVER)
-                .connectTimeout(Duration.ofSeconds(5))
+                .connectTimeout(Duration.ofSeconds(4))
                 .build();
+        JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
+        requestFactory.setReadTimeout(Duration.ofSeconds(5));
         return RestClient.builder()
-                .requestFactory(new JdkClientHttpRequestFactory(httpClient))
+                .requestFactory(requestFactory)
                 .build();
     }
 }

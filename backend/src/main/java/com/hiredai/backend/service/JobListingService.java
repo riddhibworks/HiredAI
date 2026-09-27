@@ -90,12 +90,13 @@ public class JobListingService {
         }
 
         String resumeText = defaultResumeText(userId);
+        Set<String> resumeTokens = resumeText != null ? matchingService.extractResumeTokens(resumeText) : Set.of();
         Set<String> savedIds = savedJobService.savedJobIdsForUser(userId);
         Set<String> appliedIds = savedJobService.appliedJobIdsForUser(userId);
 
         // 4. Map & match scoring
         Stream<JobListingResponse> responseStream = stream.map(listing ->
-                toResponse(listing, resumeText, savedIds, appliedIds));
+                toResponse(listing, resumeTokens, savedIds, appliedIds));
 
         // 5. Min match score filter
         if (minMatchScore != null) {
@@ -131,9 +132,10 @@ public class JobListingService {
                 .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
                         org.springframework.http.HttpStatus.NOT_FOUND, "Job listing not found"));
         String resumeText = defaultResumeText(userId);
+        Set<String> resumeTokens = resumeText != null ? matchingService.extractResumeTokens(resumeText) : Set.of();
         Set<String> savedIds = savedJobService.savedJobIdsForUser(userId);
         Set<String> appliedIds = savedJobService.appliedJobIdsForUser(userId);
-        return toResponse(listing, resumeText, savedIds, appliedIds);
+        return toResponse(listing, resumeTokens, savedIds, appliedIds);
     }
 
     public List<String> getAvailablePlatforms() {
@@ -144,12 +146,12 @@ public class JobListingService {
         return List.of("Arbeitnow", "Himalayas", "Jobicy", "RemoteOK", "Remotive", "WeWorkRemotely");
     }
 
-    private JobListingResponse toResponse(JobListing listing, String resumeText, Set<String> savedIds, Set<String> appliedIds) {
+    private JobListingResponse toResponse(JobListing listing, Set<String> resumeTokens, Set<String> savedIds, Set<String> appliedIds) {
         Double matchScore = listing.getMatchScore();
-        if (resumeText != null && (listing.getTitle() != null || listing.getDescription() != null)) {
+        if (resumeTokens != null && !resumeTokens.isEmpty() && (listing.getTitle() != null || listing.getDescription() != null)) {
             String fullText = (listing.getTitle() != null ? listing.getTitle() + " " : "") +
                     (listing.getDescription() != null ? listing.getDescription() : "");
-            matchScore = matchingService.scoreMatch(resumeText, fullText);
+            matchScore = matchingService.scoreMatch(resumeTokens, fullText);
         }
         return new JobListingResponse(listing.getId(), listing.getPlatform(), listing.getExternalJobId(),
                 listing.getTitle(), listing.getCompany(), listing.getLocation(), listing.getDescription(),
