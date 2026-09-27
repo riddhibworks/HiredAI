@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   AppBar,
   Avatar,
   Box,
   Button,
+  Chip,
   Container,
   Divider,
   Drawer,
@@ -31,6 +32,8 @@ import LoginIcon from '@mui/icons-material/Login';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 
 import { useAuthStore } from '../store/authStore';
+import { useJobStore } from '../store/jobStore';
+import { savedJobsApi } from '../api/savedJobs';
 
 const NAV_ITEMS = [
   { label: 'Home', path: '/', icon: <HomeIcon fontSize="small" /> },
@@ -44,7 +47,14 @@ export default function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { email, token, logout } = useAuthStore();
+  const { savedJobs, setSavedJobs, savedJobsLoadedAt } = useJobStore();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  useEffect(() => {
+    if (token && savedJobsLoadedAt === 0) {
+      savedJobsApi.list().then(setSavedJobs).catch(() => undefined);
+    }
+  }, [token, savedJobsLoadedAt, setSavedJobs]);
 
   // Find matching nav path or default to '/' exact check
   const currentTab = NAV_ITEMS.find((item) => {
@@ -124,7 +134,26 @@ export default function AppLayout() {
                 {NAV_ITEMS.map((item) => (
                   <Tab
                     key={item.path}
-                    label={item.label}
+                    label={
+                      item.path === '/saved-jobs' && savedJobs.length > 0 ? (
+                        <Box display="flex" alignItems="center" gap={0.75}>
+                          <span>{item.label}</span>
+                          <Chip
+                            label={savedJobs.length}
+                            size="small"
+                            sx={{
+                              height: 18,
+                              fontSize: '0.7rem',
+                              fontWeight: 700,
+                              bgcolor: '#FFD9E4',
+                              color: '#A31346',
+                            }}
+                          />
+                        </Box>
+                      ) : (
+                        item.label
+                      )
+                    }
                     value={item.path}
                     onClick={() => navigate(item.path)}
                     sx={{
@@ -333,7 +362,26 @@ export default function AppLayout() {
                       {item.icon}
                     </ListItemIcon>
                     <ListItemText
-                      primary={item.label}
+                      primary={
+                        item.path === '/saved-jobs' && savedJobs.length > 0 ? (
+                          <Box display="flex" alignItems="center" justifyContent="space-between" pr={1}>
+                            <span>{item.label}</span>
+                            <Chip
+                              label={savedJobs.length}
+                              size="small"
+                              sx={{
+                                height: 18,
+                                fontSize: '0.7rem',
+                                fontWeight: 700,
+                                bgcolor: '#FFD9E4',
+                                color: '#A31346',
+                              }}
+                            />
+                          </Box>
+                        ) : (
+                          item.label
+                        )
+                      }
                       primaryTypographyProps={{
                         fontFamily: "'Archivo', sans-serif",
                         fontWeight: isSelected ? 700 : 500,

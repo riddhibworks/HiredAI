@@ -11,6 +11,7 @@ import {
   Grid,
   IconButton,
   Paper,
+  Snackbar,
   Tooltip,
   Typography,
 } from '@mui/material';
@@ -19,34 +20,64 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
+import WorkIcon from '@mui/icons-material/Work';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 
 import { useAuthStore } from '../store/authStore';
+import { useJobStore } from '../store/jobStore';
 import { savedJobsApi } from '../api/savedJobs';
 import type { SavedJobResponse } from '../types/api';
 
 export default function SavedJobsPage() {
   const navigate = useNavigate();
   const token = useAuthStore((s) => s.token);
-  const [savedJobs, setSavedJobs] = useState<SavedJobResponse[]>([]);
+
+  const {
+    savedJobs,
+    savedJobsLoadedAt,
+    setSavedJobs,
+    toggleJobApplied: storeToggleApplied,
+    toggleJobSaved: storeToggleSaved,
+  } = useJobStore();
+
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [filterTab, setFilterTab] = useState<'all' | 'saved' | 'applied'>('all');
+  const [filterTab, setFilterTab] = useState<'saved' | 'applied' | 'all'>('saved');
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Background revalidation or initial load
   const load = () => {
-    if (token) {
-      savedJobsApi.list().then(setSavedJobs).catch(() => setError('Failed to load saved jobs'));
-    }
+    if (!token) return;
+    savedJobsApi
+      .list()
+      .then((data) => {
+        setSavedJobs(data);
+      })
+      .catch((err) => {
+        console.error('[SavedJobs] list failed:', err);
+        if (savedJobs.length === 0) {
+          setError('Failed to load saved jobs');
+        }
+      });
   };
 
-  useEffect(load, [token]);
+  useEffect(() => {
+    // If not cached or older than 2 minutes, fetch in background
+    if (token && (savedJobs.length === 0 || Date.now() - savedJobsLoadedAt > 2 * 60 * 1000)) {
+      load();
+    }
+  }, [token]);
 
   const handleUnsave = async (job: SavedJobResponse) => {
     setBusyId(job.id);
+    storeToggleSaved(job.jobListingId, false);
     try {
       await savedJobsApi.unsave(job.jobListingId);
-      setSavedJobs((prev) => prev.filter((j) => j.id !== job.id));
-      load();
+      const freshList = await savedJobsApi.list();
+      setSavedJobs(freshList);
+      setToastMessage('Removed job from tracked list.');
     } catch (err: any) {
+      storeToggleSaved(job.jobListingId, true);
       console.error('[SavedJobs] unsave failed:', err);
       const msg = err?.response?.data?.message || err?.message || 'Failed to remove saved job';
       setError(msg);
@@ -57,14 +88,34 @@ export default function SavedJobsPage() {
 
   const handleToggleApplied = async (job: SavedJobResponse) => {
     setBusyId(job.id);
+    const nextApplied = !job.appliedManually;
+    storeToggleApplied(job.jobListingId, nextApplied);
+
+    // Calculate updated counts for UI feedback
+    const newSavedOnlyCount = savedJobs.filter((j) =>
+      j.id === job.id || j.jobListingId === job.jobListingId ? !nextApplied : !j.appliedManually
+    ).length;
+    const newAppliedCount = savedJobs.filter((j) =>
+      j.id === job.id || j.jobListingId === job.jobListingId ? nextApplied : j.appliedManually
+    ).length;
+
+    // Smoothly transition between tabs so user immediately sees the job in its new home
+    if (nextApplied && filterTab === 'saved') {
+      setFilterTab('applied');
+      setToastMessage(`Marked as applied! Moved to Applied list (Saved: ${newSavedOnlyCount} • Applied: ${newAppliedCount})`);
+    } else if (!nextApplied && filterTab === 'applied') {
+      setFilterTab('saved');
+      setToastMessage(`Marked as to apply! Moved to Saved list (Saved: ${newSavedOnlyCount} • Applied: ${newAppliedCount})`);
+    } else {
+      setToastMessage(nextApplied ? 'Marked as applied!' : 'Marked as not applied.');
+    }
+
     try {
-      const nextApplied = !job.appliedManually;
       await savedJobsApi.markApplied(job.jobListingId, nextApplied);
-      setSavedJobs((prev) =>
-        prev.map((j) => (j.id === job.id ? { ...j, appliedManually: nextApplied } : j))
-      );
-      load();
+      const freshList = await savedJobsApi.list();
+      setSavedJobs(freshList);
     } catch (err: any) {
+      storeToggleApplied(job.jobListingId, !nextApplied);
       console.error('[SavedJobs] markApplied failed:', err);
       const msg = err?.response?.data?.message || err?.message || 'Failed to update applied status';
       setError(msg);
@@ -85,17 +136,30 @@ export default function SavedJobsPage() {
 
   return (
     <Box>
+      {/* Page Header */}
       <Box display="flex" alignItems="center" gap={1.5} mb={1}>
         <BookmarkIcon sx={{ color: '#E8336D', fontSize: 28 }} />
-        <Typography variant="h4" sx={{ color: '#241019' }}>
+        <Typography variant="h4" sx={{ color: '#241019', fontWeight: 800 }}>
           Saved Jobs & Applications
         </Typography>
       </Box>
       <Typography variant="body2" sx={{ color: '#8A6E76', mb: 3 }}>
-        Track jobs you want to apply for and monitor your submitted applications
+        Track jobs you plan to apply for and manage submitted applications in one place.
       </Typography>
 
-      {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
+
+      <Snackbar
+        open={!!toastMessage}
+        autoHideDuration={4000}
+        onClose={() => setToastMessage(null)}
+        message={toastMessage}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      />
 
       {!token ? (
         <Paper
@@ -152,80 +216,230 @@ export default function SavedJobsPage() {
         </Paper>
       ) : (
         <>
-          {totalCount > 0 && (
-            <Box display="flex" gap={1.5} mb={3} flexWrap="wrap">
-              <Button
-                variant={filterTab === 'all' ? 'contained' : 'outlined'}
-                onClick={() => setFilterTab('all')}
-                sx={{
-                  borderRadius: 2,
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  fontSize: '0.875rem',
-                  px: 2,
-                  py: 0.75,
-                  bgcolor: filterTab === 'all' ? '#E8336D' : '#FFFFFF',
-                  color: filterTab === 'all' ? '#FFFFFF' : '#8A6E76',
-                  borderColor: filterTab === 'all' ? '#E8336D' : '#EFE6E8',
-                  boxShadow: 'none',
-                  '&:hover': {
-                    bgcolor: filterTab === 'all' ? '#A31346' : '#FFF0F4',
-                    borderColor: '#E8336D',
-                    boxShadow: 'none',
-                  },
-                }}
-              >
-                All Jobs ({totalCount})
-              </Button>
-              <Button
-                variant={filterTab === 'saved' ? 'contained' : 'outlined'}
+          {/* KPI Stat Summary Cards */}
+          <Grid container spacing={2} mb={3}>
+            {/* Saved Jobs Card */}
+            <Grid item xs={12} sm={4}>
+              <Paper
                 onClick={() => setFilterTab('saved')}
+                elevation={0}
                 sx={{
-                  borderRadius: 2,
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  fontSize: '0.875rem',
-                  px: 2,
-                  py: 0.75,
-                  bgcolor: filterTab === 'saved' ? '#E8336D' : '#FFFFFF',
-                  color: filterTab === 'saved' ? '#FFFFFF' : '#8A6E76',
+                  p: 2.5,
+                  borderRadius: 3,
+                  cursor: 'pointer',
+                  border: '2px solid',
                   borderColor: filterTab === 'saved' ? '#E8336D' : '#EFE6E8',
-                  boxShadow: 'none',
+                  bgcolor: filterTab === 'saved' ? '#FFF5F8' : '#FFFFFF',
+                  transition: 'all 0.2s ease',
                   '&:hover': {
-                    bgcolor: filterTab === 'saved' ? '#A31346' : '#FFF0F4',
                     borderColor: '#E8336D',
-                    boxShadow: 'none',
+                    boxShadow: '0 4px 16px rgba(232, 51, 109, 0.08)',
                   },
                 }}
               >
-                Saved / To Apply ({savedOnlyCount})
-              </Button>
-              <Button
-                variant={filterTab === 'applied' ? 'contained' : 'outlined'}
-                onClick={() => setFilterTab('applied')}
-                sx={{
-                  borderRadius: 2,
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  fontSize: '0.875rem',
-                  px: 2,
-                  py: 0.75,
-                  bgcolor: filterTab === 'applied' ? '#16a34a' : '#FFFFFF',
-                  color: filterTab === 'applied' ? '#FFFFFF' : '#16a34a',
-                  borderColor: filterTab === 'applied' ? '#16a34a' : '#BBF7D0',
-                  boxShadow: 'none',
-                  '&:hover': {
-                    bgcolor: filterTab === 'applied' ? '#15803d' : '#DCFCE7',
-                    borderColor: '#16a34a',
-                    boxShadow: 'none',
-                  },
-                }}
-              >
-                Applied ({appliedCount})
-              </Button>
-            </Box>
-          )}
+                <Box display="flex" justifyContent="space-between" alignItems="center">
+                  <Box>
+                    <Typography variant="caption" sx={{ color: '#8A6E76', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                      Saved (To Apply)
+                    </Typography>
+                    <Typography variant="h4" sx={{ color: '#241019', fontWeight: 800, mt: 0.5 }}>
+                      {savedOnlyCount}
+                    </Typography>
+                  </Box>
+                  <Box
+                    sx={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: '50%',
+                      bgcolor: '#FFF0F4',
+                      color: '#E8336D',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <BookmarkIcon fontSize="small" />
+                  </Box>
+                </Box>
+                <Typography variant="caption" sx={{ color: '#8A6E76', mt: 1, display: 'block' }}>
+                  {savedOnlyCount === 1 ? '1 job waiting for application' : `${savedOnlyCount} jobs waiting for application`}
+                </Typography>
+              </Paper>
+            </Grid>
 
+            {/* Applied Jobs Card */}
+            <Grid item xs={12} sm={4}>
+              <Paper
+                onClick={() => setFilterTab('applied')}
+                elevation={0}
+                sx={{
+                  p: 2.5,
+                  borderRadius: 3,
+                  cursor: 'pointer',
+                  border: '2px solid',
+                  borderColor: filterTab === 'applied' ? '#16a34a' : '#EFE6E8',
+                  bgcolor: filterTab === 'applied' ? '#F0FDF4' : '#FFFFFF',
+                  transition: 'all 0.2s ease',
+                  '&:hover': {
+                    borderColor: '#16a34a',
+                    boxShadow: '0 4px 16px rgba(22, 163, 74, 0.08)',
+                  },
+                }}
+              >
+                <Box display="flex" justifyContent="space-between" alignItems="center">
+                  <Box>
+                    <Typography variant="caption" sx={{ color: '#8A6E76', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                      Applied
+                    </Typography>
+                    <Typography variant="h4" sx={{ color: '#15803d', fontWeight: 800, mt: 0.5 }}>
+                      {appliedCount}
+                    </Typography>
+                  </Box>
+                  <Box
+                    sx={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: '50%',
+                      bgcolor: '#DCFCE7',
+                      color: '#15803d',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <CheckCircleIcon fontSize="small" />
+                  </Box>
+                </Box>
+                <Typography variant="caption" sx={{ color: '#8A6E76', mt: 1, display: 'block' }}>
+                  {appliedCount === 1 ? '1 application submitted' : `${appliedCount} applications submitted`}
+                </Typography>
+              </Paper>
+            </Grid>
+
+            {/* Total Tracked Card */}
+            <Grid item xs={12} sm={4}>
+              <Paper
+                onClick={() => setFilterTab('all')}
+                elevation={0}
+                sx={{
+                  p: 2.5,
+                  borderRadius: 3,
+                  cursor: 'pointer',
+                  border: '2px solid',
+                  borderColor: filterTab === 'all' ? '#241019' : '#EFE6E8',
+                  bgcolor: filterTab === 'all' ? '#FAF8F9' : '#FFFFFF',
+                  transition: 'all 0.2s ease',
+                  '&:hover': {
+                    borderColor: '#241019',
+                    boxShadow: '0 4px 16px rgba(36, 16, 25, 0.08)',
+                  },
+                }}
+              >
+                <Box display="flex" justifyContent="space-between" alignItems="center">
+                  <Box>
+                    <Typography variant="caption" sx={{ color: '#8A6E76', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                      All Tracked
+                    </Typography>
+                    <Typography variant="h4" sx={{ color: '#241019', fontWeight: 800, mt: 0.5 }}>
+                      {totalCount}
+                    </Typography>
+                  </Box>
+                  <Box
+                    sx={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: '50%',
+                      bgcolor: '#F3EBF0',
+                      color: '#241019',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <WorkIcon fontSize="small" />
+                  </Box>
+                </Box>
+                <Typography variant="caption" sx={{ color: '#8A6E76', mt: 1, display: 'block' }}>
+                  Total jobs in your career pipeline
+                </Typography>
+              </Paper>
+            </Grid>
+          </Grid>
+
+          {/* Filter Sub-Tabs */}
+          <Box display="flex" gap={1.5} mb={3} flexWrap="wrap">
+            <Button
+              variant={filterTab === 'saved' ? 'contained' : 'outlined'}
+              onClick={() => setFilterTab('saved')}
+              sx={{
+                borderRadius: 2,
+                textTransform: 'none',
+                fontWeight: 700,
+                fontSize: '0.875rem',
+                px: 2.5,
+                py: 0.75,
+                bgcolor: filterTab === 'saved' ? '#E8336D' : '#FFFFFF',
+                color: filterTab === 'saved' ? '#FFFFFF' : '#8A6E76',
+                borderColor: filterTab === 'saved' ? '#E8336D' : '#EFE6E8',
+                boxShadow: 'none',
+                '&:hover': {
+                  bgcolor: filterTab === 'saved' ? '#A31346' : '#FFF0F4',
+                  borderColor: '#E8336D',
+                  boxShadow: 'none',
+                },
+              }}
+            >
+              Saved Jobs ({savedOnlyCount})
+            </Button>
+            <Button
+              variant={filterTab === 'applied' ? 'contained' : 'outlined'}
+              onClick={() => setFilterTab('applied')}
+              sx={{
+                borderRadius: 2,
+                textTransform: 'none',
+                fontWeight: 700,
+                fontSize: '0.875rem',
+                px: 2.5,
+                py: 0.75,
+                bgcolor: filterTab === 'applied' ? '#16a34a' : '#FFFFFF',
+                color: filterTab === 'applied' ? '#FFFFFF' : '#16a34a',
+                borderColor: filterTab === 'applied' ? '#16a34a' : '#BBF7D0',
+                boxShadow: 'none',
+                '&:hover': {
+                  bgcolor: filterTab === 'applied' ? '#15803d' : '#DCFCE7',
+                  borderColor: '#16a34a',
+                  boxShadow: 'none',
+                },
+              }}
+            >
+              Applied ({appliedCount})
+            </Button>
+            <Button
+              variant={filterTab === 'all' ? 'contained' : 'outlined'}
+              onClick={() => setFilterTab('all')}
+              sx={{
+                borderRadius: 2,
+                textTransform: 'none',
+                fontWeight: 700,
+                fontSize: '0.875rem',
+                px: 2.5,
+                py: 0.75,
+                bgcolor: filterTab === 'all' ? '#241019' : '#FFFFFF',
+                color: filterTab === 'all' ? '#FFFFFF' : '#8A6E76',
+                borderColor: filterTab === 'all' ? '#241019' : '#EFE6E8',
+                boxShadow: 'none',
+                '&:hover': {
+                  bgcolor: filterTab === 'all' ? '#11070c' : '#FAF8F9',
+                  borderColor: '#241019',
+                  boxShadow: 'none',
+                },
+              }}
+            >
+              All Tracked ({totalCount})
+            </Button>
+          </Box>
+
+          {/* Cards Grid */}
           <Grid container spacing={2.5}>
             {displayedJobs.map((job) => (
               <Grid item xs={12} md={6} key={job.id}>
@@ -236,10 +450,12 @@ export default function SavedJobsPage() {
                     flexDirection: 'column',
                     justifyContent: 'space-between',
                     bgcolor: '#FFFFFF',
-                    border: '1px solid #EFE6E8',
+                    border: '1px solid',
+                    borderColor: job.appliedManually ? '#BBF7D0' : '#EFE6E8',
                     borderRadius: 3,
+                    transition: 'all 0.2s ease',
                     '&:hover': {
-                      borderColor: '#D8C3C9',
+                      borderColor: job.appliedManually ? '#86EFAC' : '#D8C3C9',
                       boxShadow: '0 6px 20px rgba(36, 16, 25, 0.05)',
                     },
                   }}
@@ -248,7 +464,7 @@ export default function SavedJobsPage() {
                     {job.title ? (
                       <>
                         <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1} gap={1}>
-                          <Typography variant="h6" sx={{ fontSize: { xs: '1.05rem', sm: '1.15rem' }, color: '#241019', lineHeight: 1.3 }}>
+                          <Typography variant="h6" sx={{ fontSize: { xs: '1.05rem', sm: '1.15rem' }, color: '#241019', lineHeight: 1.3, fontWeight: 700 }}>
                             {job.title}
                           </Typography>
                           {job.appliedManually ? (
@@ -339,7 +555,8 @@ export default function SavedJobsPage() {
                         disabled={busyId === job.id}
                         onClick={() => handleToggleApplied(job)}
                         sx={{
-                          border: '1px solid #EFE6E8',
+                          border: '1px solid',
+                          borderColor: job.appliedManually ? '#86EFAC' : '#EFE6E8',
                           borderRadius: 2,
                           color: job.appliedManually ? '#15803d' : '#8A6E76',
                           bgcolor: job.appliedManually ? '#DCFCE7' : 'transparent',
@@ -369,37 +586,83 @@ export default function SavedJobsPage() {
               </Grid>
             ))}
 
+            {/* When Tab has 0 jobs but user has jobs in the other tab */}
             {totalCount > 0 && displayedJobs.length === 0 && (
               <Grid item xs={12}>
                 <Paper sx={{ p: 5, textAlign: 'center', bgcolor: '#FFFFFF', borderRadius: 3, border: '1px dashed #EFE6E8' }}>
-                  <Typography variant="h6" sx={{ color: '#241019', mb: 1, fontWeight: 600 }}>
-                    {filterTab === 'applied' ? 'No applied jobs yet' : 'No unapplied jobs'}
+                  <Typography variant="h6" sx={{ color: '#241019', mb: 1, fontWeight: 700 }}>
+                    {filterTab === 'saved' ? 'No pending saved jobs' : 'No applied jobs yet'}
                   </Typography>
-                  <Typography variant="body2" sx={{ color: '#8A6E76', mb: 2 }}>
-                    {filterTab === 'applied'
-                      ? 'Click the checkmark icon on any saved job to mark it as applied.'
-                      : 'All of your saved jobs are currently marked as applied!'}
+                  <Typography variant="body2" sx={{ color: '#8A6E76', mb: 2.5 }}>
+                    {filterTab === 'saved'
+                      ? `All of your saved jobs are currently marked as applied! You have ${appliedCount} job(s) in your Applied list.`
+                      : `You have ${savedOnlyCount} job(s) in your Saved list ready to apply! Click the checkmark on any job card when you submit an application.`}
                   </Typography>
-                  <Button
-                    variant="text"
-                    onClick={() => setFilterTab('all')}
-                    sx={{ color: '#E8336D', fontWeight: 600 }}
-                  >
-                    View All Saved Jobs ({totalCount})
-                  </Button>
+                  <Box display="flex" justifyContent="center" gap={2} flexWrap="wrap">
+                    {filterTab === 'saved' ? (
+                      <Button
+                        variant="contained"
+                        onClick={() => setFilterTab('applied')}
+                        sx={{ bgcolor: '#16a34a', color: '#FFFFFF', fontWeight: 700, '&:hover': { bgcolor: '#15803d' } }}
+                      >
+                        View Applied Jobs ({appliedCount})
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="contained"
+                        onClick={() => setFilterTab('saved')}
+                        sx={{ bgcolor: '#E8336D', color: '#FFFFFF', fontWeight: 700, '&:hover': { bgcolor: '#A31346' } }}
+                      >
+                        View Saved Jobs ({savedOnlyCount})
+                      </Button>
+                    )}
+                    <Button
+                      variant="outlined"
+                      onClick={() => navigate('/jobs')}
+                      endIcon={<ArrowForwardIcon fontSize="small" />}
+                      sx={{ borderColor: '#EFE6E8', color: '#241019', fontWeight: 600 }}
+                    >
+                      Browse Job Feed
+                    </Button>
+                  </Box>
                 </Paper>
               </Grid>
             )}
 
+            {/* Total 0 jobs tracked */}
             {totalCount === 0 && (
               <Grid item xs={12}>
-                <Paper sx={{ p: 6, textAlign: 'center', bgcolor: '#FFFFFF', borderRadius: 3 }}>
-                  <Typography variant="h6" sx={{ color: '#241019', mb: 1 }}>
+                <Paper sx={{ p: 6, textAlign: 'center', bgcolor: '#FFFFFF', borderRadius: 3, border: '1px solid #EFE6E8' }}>
+                  <Box
+                    sx={{
+                      width: 52,
+                      height: 52,
+                      borderRadius: '50%',
+                      bgcolor: '#FFF0F4',
+                      color: '#E8336D',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      mx: 'auto',
+                      mb: 2,
+                    }}
+                  >
+                    <BookmarkIcon fontSize="medium" />
+                  </Box>
+                  <Typography variant="h6" sx={{ color: '#241019', mb: 1, fontWeight: 700 }}>
                     No saved jobs yet
                   </Typography>
-                  <Typography variant="body2" sx={{ color: '#8A6E76' }}>
-                    Browse the Job Feed and click the bookmark icon on any card to save it here.
+                  <Typography variant="body2" sx={{ color: '#8A6E76', mb: 3, maxWidth: 440, mx: 'auto' }}>
+                    Browse listings on the Job Feed and click the bookmark icon on any card to save jobs and track your applications here.
                   </Typography>
+                  <Button
+                    variant="contained"
+                    onClick={() => navigate('/jobs')}
+                    endIcon={<ArrowForwardIcon fontSize="small" />}
+                    sx={{ bgcolor: '#E8336D', color: '#FFFFFF', fontWeight: 700, px: 3, py: 1 }}
+                  >
+                    Explore Job Feed
+                  </Button>
                 </Paper>
               </Grid>
             )}

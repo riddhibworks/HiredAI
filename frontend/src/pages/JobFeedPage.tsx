@@ -31,6 +31,7 @@ import {
   useTheme,
 } from '@mui/material';
 import { useAuthStore } from '../store/authStore';
+import { useJobStore } from '../store/jobStore';
 import SearchIcon from '@mui/icons-material/Search';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
@@ -94,8 +95,22 @@ export default function JobFeedPage() {
   const token = useAuthStore((s) => s.token);
   const [authModalOpen, setAuthModalOpen] = useState(false);
 
-  const [jobs, setJobs] = useState<JobListingResponse[]>([]);
-  const [platforms, setPlatforms] = useState<string[]>([]);
+  const {
+    feedJobs,
+    feedTotal,
+    feedPage,
+    feedQueryKey,
+    feedLoadedAt,
+    setFeed,
+    appendFeed,
+    platforms: cachedPlatforms,
+    setPlatforms: setCachedPlatforms,
+    toggleJobSaved,
+    toggleJobApplied,
+  } = useJobStore();
+
+  const [jobs, setJobs] = useState<JobListingResponse[]>(feedJobs);
+  const [platforms, setPlatforms] = useState<string[]>(cachedPlatforms);
 
   // Multi-keyword state
   const [keywords, setKeywords] = useState<string[]>(initialKeywords);
@@ -110,8 +125,21 @@ export default function JobFeedPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [page, setPage] = useState(0);
-  const [totalElements, setTotalElements] = useState(0);
+  const [page, setPage] = useState(feedPage);
+  const [totalElements, setTotalElements] = useState(feedTotal);
+
+  // Synchronize store updates into component state
+  useEffect(() => {
+    setJobs(feedJobs);
+    setTotalElements(feedTotal);
+    setPage(feedPage);
+  }, [feedJobs, feedTotal, feedPage]);
+
+  useEffect(() => {
+    if (cachedPlatforms.length > 0) {
+      setPlatforms(cachedPlatforms);
+    }
+  }, [cachedPlatforms]);
 
   // Mobile Filter Drawer state
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
@@ -144,10 +172,27 @@ export default function JobFeedPage() {
     sort !== 'relevance',
   ].filter(Boolean).length;
 
-  const load = useCallback(() => {
-    setLoading(true);
-    setError(null);
+  const load = useCallback((forceRefresh = false) => {
     const searchKeyword = getCombinedKeywordString();
+    const currentQueryKey = JSON.stringify({ searchKeyword, location, platform, sort });
+
+    const hasFreshCache =
+      !forceRefresh &&
+      feedJobs.length > 0 &&
+      feedQueryKey === currentQueryKey &&
+      (Date.now() - feedLoadedAt < 5 * 60 * 1000);
+
+    if (hasFreshCache) {
+      console.info('[JobFeed] Instant restore from cache: %d jobs', feedJobs.length);
+      setJobs(feedJobs);
+      setTotalElements(feedTotal);
+      setPage(feedPage);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(feedJobs.length === 0 || feedQueryKey !== currentQueryKey);
+    setError(null);
     console.info('[JobFeed] Loading jobs — keyword=%s, location=%s, platform=%s, sort=%s', searchKeyword, location, platform, sort);
     const loadStart = Date.now();
     jobsApi
@@ -161,16 +206,16 @@ export default function JobFeedPage() {
       })
       .then((res) => {
         console.info('[JobFeed] Loaded %d jobs (total=%d) in %dms', res.content.length, res.totalElements, Date.now() - loadStart);
-        setJobs(res.content);
-        setPage(0);
-        setTotalElements(res.totalElements);
+        setFeed(res.content, res.totalElements, 0, currentQueryKey);
       })
       .catch((err) => {
         console.error('[JobFeed] Failed to load jobs:', err.message);
-        setError('Failed to load jobs from feed');
+        if (feedJobs.length === 0) {
+          setError('Failed to load jobs from feed');
+        }
       })
       .finally(() => setLoading(false));
-  }, [getCombinedKeywordString, location, platform, sort]);
+  }, [getCombinedKeywordString, location, platform, sort, feedJobs, feedQueryKey, feedLoadedAt, feedTotal, feedPage, setFeed]);
 
   const loadMore = () => {
     const nextPage = page + 1;
@@ -190,9 +235,7 @@ export default function JobFeedPage() {
       })
       .then((res) => {
         console.info('[JobFeed] Loaded %d more jobs in %dms (now showing %d)', res.content.length, Date.now() - moreStart, jobs.length + res.content.length);
-        setJobs((prev) => [...prev, ...res.content]);
-        setPage(nextPage);
-        setTotalElements(res.totalElements);
+        appendFeed(res.content, res.totalElements, nextPage);
       })
       .catch((err) => {
         console.error('[JobFeed] Failed to load more jobs:', err.message);
@@ -202,12 +245,14 @@ export default function JobFeedPage() {
   };
 
   useEffect(() => {
-    console.info('[JobFeed] Fetching available platform list');
-    jobsApi.platforms().then((p) => {
-      console.info('[JobFeed] Got %d platforms: %s', p.length, p.join(', '));
-      setPlatforms(p);
-    }).catch(() => undefined);
-  }, []);
+    if (cachedPlatforms.length === 0) {
+      console.info('[JobFeed] Fetching available platform list');
+      jobsApi.platforms().then((p) => {
+        console.info('[JobFeed] Got %d platforms: %s', p.length, p.join(', '));
+        setCachedPlatforms(p);
+      }).catch(() => undefined);
+    }
+  }, [cachedPlatforms, setCachedPlatforms]);
 
   useEffect(() => {
     const p = searchParams.get('platform');
@@ -294,12 +339,12 @@ export default function JobFeedPage() {
           : Math.floor(Math.random() * (1200 - 500 + 1)) + 500;
       console.info('[JobFeed] Refresh complete in %dms, reported count=%d', Date.now() - refreshStart, count);
       setInfo(`Pulled ${count} new listings from connected job sources.`);
-      load();
+      load(true);
     } catch {
       const count = Math.floor(Math.random() * (1200 - 500 + 1)) + 500;
       console.warn('[JobFeed] Refresh request failed, showing fallback count=%d', count);
       setInfo(`Pulled ${count} new listings from connected job sources.`);
-      load();
+      load(true);
     } finally {
       setRefreshing(false);
     }
@@ -311,14 +356,16 @@ export default function JobFeedPage() {
       return;
     }
     setBusyId(job.id);
+    const newSaved = !job.saved;
+    toggleJobSaved(job.id, newSaved, job);
     try {
-      if (job.saved) {
+      if (!newSaved) {
         await jobsApi.unsave(job.id);
       } else {
         await jobsApi.save(job.id);
       }
-      setJobs((prev) => prev.map((j) => (j.id === job.id ? { ...j, saved: !j.saved } : j)));
     } catch (err: any) {
+      toggleJobSaved(job.id, !newSaved, job);
       console.error('[JobFeed] toggle save failed:', err);
       const msg = err?.response?.data?.message || err?.message || 'Failed to update saved status';
       setError(msg);
@@ -333,17 +380,12 @@ export default function JobFeedPage() {
       return;
     }
     setBusyId(job.id);
+    const nextApplied = !job.appliedManually;
+    toggleJobApplied(job.id, nextApplied);
     try {
-      const nextApplied = !job.appliedManually;
       await jobsApi.markApplied(job.id, nextApplied);
-      setJobs((prev) =>
-        prev.map((j) =>
-          j.id === job.id
-            ? { ...j, appliedManually: nextApplied, saved: nextApplied ? true : j.saved }
-            : j
-        )
-      );
     } catch (err: any) {
+      toggleJobApplied(job.id, !nextApplied);
       console.error('[JobFeed] toggle applied failed:', err);
       const msg = err?.response?.data?.message || err?.message || 'Failed to update applied status';
       setError(msg);
