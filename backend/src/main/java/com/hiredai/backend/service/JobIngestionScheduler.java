@@ -16,6 +16,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -32,11 +34,56 @@ public class JobIngestionScheduler {
     private final List<JobSourceAdapter> adapters;
     private final JobListingRepository jobListingRepository;
     private final CustomFeedIngestionService customFeedIngestionService;
+    private final JobListingService jobListingService;
+
+    private final AtomicBoolean isIngesting = new AtomicBoolean(false);
 
     @Scheduled(fixedRateString = "${app.ingestion.interval-ms:300000}", initialDelay = 5000)
     public void ingestAll() {
         log.info("Starting scheduled 5-minute job ingestion sweep across all adapters");
         ingestFromAllAdapters();
+        jobListingService.invalidateCache();
+    }
+
+    /**
+     * Non-blocking background trigger:
+     * - If database has 0 listings, immediately ingests a fast batch of 20 listings so initial feed is populated.
+     * - Runs the remaining platforms in the background without holding up the HTTP response thread.
+     */
+    public void triggerAsyncIngestion() {
+        if (jobListingRepository.count() == 0) {
+            ensureInitialBatch();
+        }
+
+        CompletableFuture.runAsync(() -> {
+            if (isIngesting.compareAndSet(false, true)) {
+                try {
+                    log.info("Starting background async job ingestion sweep across all platforms");
+                    ingestFromAllAdapters();
+                    jobListingService.invalidateCache();
+                } catch (Exception e) {
+                    log.error("Async job ingestion failed: {}", e.getMessage(), e);
+                } finally {
+                    isIngesting.set(false);
+                }
+            } else {
+                log.info("Job ingestion already in progress in background, skipping duplicate run.");
+            }
+        });
+    }
+
+    private void ensureInitialBatch() {
+        var criteria = new JobSourceAdapter.SearchCriteria(List.of(), List.of(), null, null);
+        for (JobSourceAdapter adapter : adapters) {
+            try {
+                int fetched = ingestFromAdapter(adapter, criteria);
+                if (fetched >= 20) {
+                    break;
+                }
+            } catch (Exception ignored) {
+            }
+        }
+        jobListingService.invalidateCache();
     }
 
     /** Parallel, on-demand refresh across all adapters with batch DB persistence. */

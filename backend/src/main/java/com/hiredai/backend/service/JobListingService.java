@@ -28,8 +28,33 @@ public class JobListingService {
     private final SavedJobService savedJobService;
     private final MatchingService matchingService;
 
+    // Fast in-memory cache for default page 0 feed (20 jobs)
+    private volatile CachedFeed defaultFeedCache = null;
+    private static final long CACHE_TTL_MS = 180_000; // 3 minutes
+
+    private record CachedFeed(long timestamp, Page<JobListingResponse> page) {}
+
+    public void invalidateCache() {
+        this.defaultFeedCache = null;
+    }
+
     public Page<JobListingResponse> search(String userId, String keyword, String location, String platform,
                                             Double minMatchScore, String sort, int page, int size) {
+        boolean isDefaultPageZero = page == 0
+                && (keyword == null || keyword.isBlank())
+                && (location == null || location.isBlank())
+                && (platform == null || platform.isBlank())
+                && minMatchScore == null
+                && ("relevance".equals(sort) || sort == null || sort.isBlank())
+                && userId == null;
+
+        if (isDefaultPageZero) {
+            CachedFeed cached = defaultFeedCache;
+            if (cached != null && (System.currentTimeMillis() - cached.timestamp() < CACHE_TTL_MS)) {
+                return cached.page();
+            }
+        }
+
         Specification<JobListing> spec = Specification.allOf(Stream.of(
                         JobListingSpecifications.keyword(keyword),
                         JobListingSpecifications.location(location),
@@ -48,11 +73,15 @@ public class JobListingService {
                 .filter(r -> minMatchScore == null || (r.matchScore() != null && r.matchScore() >= minMatchScore))
                 .collect(java.util.stream.Collectors.toCollection(java.util.ArrayList::new));
 
-        if ("relevance".equals(sort)) {
+        if ("relevance".equals(sort) || sort == null || sort.isBlank()) {
             content.sort(Comparator.comparing((JobListingResponse r) -> r.matchScore() != null ? r.matchScore() : 0.0).reversed());
         }
 
-        return new org.springframework.data.domain.PageImpl<>(content, results.getPageable(), results.getTotalElements());
+        Page<JobListingResponse> pageResult = new org.springframework.data.domain.PageImpl<>(content, results.getPageable(), results.getTotalElements());
+        if (isDefaultPageZero) {
+            defaultFeedCache = new CachedFeed(System.currentTimeMillis(), pageResult);
+        }
+        return pageResult;
     }
 
     public JobListingResponse getOrThrow(String userId, String id) {

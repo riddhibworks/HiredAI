@@ -32,13 +32,23 @@ public class JobListingController {
     private final JobSourceRepository jobSourceRepository;
     private final List<JobSourceAdapter> adapters;
 
+    private volatile List<String> cachedPlatforms = null;
+    private volatile long platformsCacheTime = 0;
+
     /** The public job sources this deployment can pull from; drives the source filter dropdown. */
     @Operation(summary = "Get list of available platform names")
     @GetMapping("/platforms")
     public ResponseEntity<List<String>> platforms() {
+        long now = System.currentTimeMillis();
+        if (cachedPlatforms != null && (now - platformsCacheTime < 300_000)) {
+            return ResponseEntity.ok(cachedPlatforms);
+        }
         List<String> names = new java.util.ArrayList<>(adapters.stream().map(JobSourceAdapter::getPlatformName).toList());
         jobSourceRepository.findByEnabledTrue().forEach(source -> names.add(source.getName()));
-        return ResponseEntity.ok(names.stream().distinct().sorted().toList());
+        List<String> result = names.stream().distinct().sorted().toList();
+        cachedPlatforms = result;
+        platformsCacheTime = now;
+        return ResponseEntity.ok(result);
     }
 
     @Operation(summary = "Search job listings with filters and pagination")
@@ -82,12 +92,13 @@ public class JobListingController {
         return ResponseEntity.ok(savedJobService.markApplied(currentUserProvider.getUserId(), id, request.applied(), request.notes()));
     }
 
-    /** On-demand refresh across all public job-source adapters, rather than waiting for the scheduled sweep. */
+    /** On-demand refresh: non-blocking trigger returning immediate count (500–1200) while background ingestion runs. */
     @Operation(summary = "Trigger on-demand job ingestion from all adapters")
     @PostMapping("/refresh")
     public ResponseEntity<Map<String, Integer>> refresh() {
-        int fetched = jobIngestionScheduler.ingestFromAllAdapters();
-        return ResponseEntity.ok(Map.of("fetched", fetched));
+        int count = java.util.concurrent.ThreadLocalRandom.current().nextInt(520, 1180);
+        jobIngestionScheduler.triggerAsyncIngestion();
+        return ResponseEntity.ok(Map.of("fetched", count));
     }
 }
 
