@@ -178,6 +178,19 @@ export const theme = createTheme({
         },
       },
     },
+    MuiAppBar: {
+      defaultProps: {
+        square: true,
+        elevation: 0,
+      },
+      styleOverrides: {
+        root: {
+          borderRadius: '0 !important',
+          border: 'none',
+          borderBottom: '1px solid #EFE6E8',
+        },
+      },
+    },
     MuiChip: {
       styleOverrides: {
         root: {

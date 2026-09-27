@@ -68,9 +68,12 @@ export default function AppLayout() {
       <AppBar
         position="sticky"
         elevation={0}
+        square
         sx={{
-          bgcolor: '#FFFFFF',
+          borderRadius: '0 !important',
+          border: 'none',
           borderBottom: '1px solid #EFE6E8',
+          bgcolor: '#FFFFFF',
           color: '#241019',
         }}
       >
