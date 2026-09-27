@@ -318,8 +318,10 @@ export default function JobFeedPage() {
         await jobsApi.save(job.id);
       }
       setJobs((prev) => prev.map((j) => (j.id === job.id ? { ...j, saved: !j.saved } : j)));
-    } catch {
-      setError('Failed to update saved status');
+    } catch (err: any) {
+      console.error('[JobFeed] toggle save failed:', err);
+      const msg = err?.response?.data?.message || err?.message || 'Failed to update saved status';
+      setError(msg);
     } finally {
       setBusyId(null);
     }
@@ -332,10 +334,19 @@ export default function JobFeedPage() {
     }
     setBusyId(job.id);
     try {
-      await jobsApi.markApplied(job.id, !job.appliedManually);
-      setJobs((prev) => prev.map((j) => (j.id === job.id ? { ...j, appliedManually: !j.appliedManually } : j)));
-    } catch {
-      setError('Failed to update applied status');
+      const nextApplied = !job.appliedManually;
+      await jobsApi.markApplied(job.id, nextApplied);
+      setJobs((prev) =>
+        prev.map((j) =>
+          j.id === job.id
+            ? { ...j, appliedManually: nextApplied, saved: nextApplied ? true : j.saved }
+            : j
+        )
+      );
+    } catch (err: any) {
+      console.error('[JobFeed] toggle applied failed:', err);
+      const msg = err?.response?.data?.message || err?.message || 'Failed to update applied status';
+      setError(msg);
     } finally {
       setBusyId(null);
     }

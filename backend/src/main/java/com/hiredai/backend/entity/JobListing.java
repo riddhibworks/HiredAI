@@ -9,10 +9,10 @@ import java.time.Instant;
 
 @Entity
 @Table(name = "job_listings",
-       uniqueConstraints = @UniqueConstraint(columnNames = {"platform", "externalJobId"}),
+       uniqueConstraints = @UniqueConstraint(columnNames = {"platform", "external_job_id"}),
        indexes = {
-           @Index(name = "idx_job_listings_fetched_at", columnList = "fetchedAt DESC"),
-           @Index(name = "idx_job_listings_posted_at", columnList = "postedAt DESC"),
+           @Index(name = "idx_job_listings_fetched_at", columnList = "fetched_at DESC"),
+           @Index(name = "idx_job_listings_posted_at", columnList = "posted_at DESC"),
            @Index(name = "idx_job_listings_platform", columnList = "platform")
        })
 @Getter
@@ -21,13 +21,12 @@ import java.time.Instant;
 public class JobListing {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
 
     @Column(nullable = false)
     private String platform;
 
-    @Column(nullable = false)
+    @Column(name = "external_job_id", nullable = false)
     private String externalJobId;
 
     private String title;
@@ -43,13 +42,14 @@ public class JobListing {
 
     private Double matchScore;
 
+    @Column(name = "posted_at")
     private Instant postedAt;
 
     private String sourceUrl;
 
-    @Column(nullable = false)
+    @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 
-    @Column(nullable = false)
+    @Column(name = "fetched_at", nullable = false)
     private Instant fetchedAt = Instant.now();
 }

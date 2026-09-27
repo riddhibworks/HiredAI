@@ -102,9 +102,11 @@ public class JobListingController {
     /** Personal tracker toggle only — never talks to the source platform. */
     @Operation(summary = "Mark a saved job as applied with notes")
     @PutMapping("/{id}/mark-applied")
-    public ResponseEntity<SavedJobResponse> markApplied(@PathVariable String id, @RequestBody MarkAppliedRequest request) {
-        log.info("PUT /jobs/{}/mark-applied — applied={}, user={}", id, request.applied(), currentUserProvider.getUserId());
-        return ResponseEntity.ok(savedJobService.markApplied(currentUserProvider.getUserId(), id, request.applied(), request.notes()));
+    public ResponseEntity<SavedJobResponse> markApplied(@PathVariable String id, @RequestBody(required = false) MarkAppliedRequest request) {
+        boolean applied = request != null && request.applied();
+        String notes = request != null ? request.notes() : null;
+        log.info("PUT /jobs/{}/mark-applied — applied={}, user={}", id, applied, currentUserProvider.getUserId());
+        return ResponseEntity.ok(savedJobService.markApplied(currentUserProvider.getUserId(), id, applied, notes));
     }
 
     /** On-demand refresh: non-blocking trigger returning immediate count (500–1200) while background ingestion runs. */

@@ -82,12 +82,14 @@ public class JobFeedCacheService {
         if (listings == null || listings.isEmpty()) return;
         List<JobListing> toSync = new ArrayList<>();
         for (JobListing listing : listings) {
-            String id = listing.getId();
-            if (id == null || id.isBlank()) {
-                id = generateId(listing.getPlatform(), listing.getExternalJobId());
-                listing.setId(id);
+            String originalId = listing.getId();
+            String deterministicId = generateId(listing.getPlatform(), listing.getExternalJobId());
+            listing.setId(deterministicId);
+            localCache.put(deterministicId, listing);
+            if (originalId != null && !originalId.isBlank() && !originalId.equals(deterministicId)) {
+                // Also index by legacy ID so any old saved_jobs foreign references still resolve
+                localCache.put(originalId, listing);
             }
-            localCache.put(id, listing);
             toSync.add(listing);
         }
         log.info("[FeedCache] Initialized local cache with {} listings (total={})", listings.size(), localCache.size());

@@ -8,6 +8,7 @@ import java.util.Optional;
 
 public interface SavedJobRepository extends JpaRepository<SavedJob, String> {
     List<SavedJob> findByUserId(String userId);
+    List<SavedJob> findByJobListingId(String jobListingId);
     Optional<SavedJob> findByUserIdAndJobListingId(String userId, String jobListingId);
     void deleteByUserIdAndJobListingId(String userId, String jobListingId);
 }

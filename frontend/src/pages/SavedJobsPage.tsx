@@ -44,9 +44,12 @@ export default function SavedJobsPage() {
     setBusyId(job.id);
     try {
       await savedJobsApi.unsave(job.jobListingId);
+      setSavedJobs((prev) => prev.filter((j) => j.id !== job.id));
       load();
-    } catch {
-      setError('Failed to remove saved job');
+    } catch (err: any) {
+      console.error('[SavedJobs] unsave failed:', err);
+      const msg = err?.response?.data?.message || err?.message || 'Failed to remove saved job';
+      setError(msg);
     } finally {
       setBusyId(null);
     }
@@ -55,10 +58,16 @@ export default function SavedJobsPage() {
   const handleToggleApplied = async (job: SavedJobResponse) => {
     setBusyId(job.id);
     try {
-      await savedJobsApi.markApplied(job.jobListingId, !job.appliedManually);
+      const nextApplied = !job.appliedManually;
+      await savedJobsApi.markApplied(job.jobListingId, nextApplied);
+      setSavedJobs((prev) =>
+        prev.map((j) => (j.id === job.id ? { ...j, appliedManually: nextApplied } : j))
+      );
       load();
-    } catch {
-      setError('Failed to update applied status');
+    } catch (err: any) {
+      console.error('[SavedJobs] markApplied failed:', err);
+      const msg = err?.response?.data?.message || err?.message || 'Failed to update applied status';
+      setError(msg);
     } finally {
       setBusyId(null);
     }
