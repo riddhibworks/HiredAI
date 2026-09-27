@@ -447,16 +447,14 @@ export default function JobFeedPage() {
               boxShadow: 'none !important',
             }}
           >
-            <Box flex={1}>
-              {renderKeywordChipInput('Search java, backend...')}
+            <Box flex={1} sx={{ minWidth: 0 }}>
+              {renderKeywordChipInput('Search...')}
             </Box>
-            <Button
-              variant="contained"
+            <IconButton
               type="submit"
               sx={{
-                height: 40,
-                minWidth: 40,
-                px: 2,
+                height: 36,
+                width: 36,
                 bgcolor: '#E8336D',
                 color: '#FFFFFF',
                 borderRadius: 2,
@@ -466,13 +464,13 @@ export default function JobFeedPage() {
                 '&:hover': { bgcolor: '#A31346' },
               }}
             >
-              Search
-            </Button>
+              <SearchIcon fontSize="small" />
+            </IconButton>
             <IconButton
               onClick={() => setMobileFilterOpen(true)}
               sx={{
-                height: 40,
-                width: 40,
+                height: 36,
+                width: 36,
                 borderRadius: 2,
                 bgcolor: activeFilterCount > 0 ? '#FFD9E4' : '#FFF9FA',
                 border: '1px solid',
@@ -483,7 +481,7 @@ export default function JobFeedPage() {
               }}
             >
               <Badge badgeContent={activeFilterCount} color="primary" sx={{ '& .MuiBadge-badge': { bgcolor: '#E8336D' } }}>
-                <TuneIcon fontSize="small" />
+                <TuneIcon sx={{ fontSize: 18 }} />
               </Badge>
             </IconButton>
           </Paper>

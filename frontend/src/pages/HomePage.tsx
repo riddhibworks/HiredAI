@@ -263,7 +263,7 @@ export default function HomePage() {
           </Grid>
 
           {/* Right Side Visual — Stacked Job Card Previews with One Deliberate Load Motion */}
-          <Grid item xs={12} md={5}>
+          <Grid item xs={12} md={5} sx={{ display: { xs: 'none', md: 'block' } }}>
             <Box
               className="hero-card-stack"
               sx={{
