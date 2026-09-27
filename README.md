@@ -55,7 +55,7 @@
 
 ## ✨ Key Features
 
-- 🔍 **Unified Multi-Source Job Feed**: Aggregates remote roles across Google Jobs, RemoteOK, Jobicy, Arbeitnow, Himalayas, Remotive, and custom user-defined RSS/Atom/JSON feeds into one feed.
+- 🔍 **Unified Multi-Source Job Feed**: Aggregates remote roles across Google Jobs, WeWorkRemotely, RemoteOK, Himalayas, Jobicy, Remotive, Arbeitnow, and custom user-defined RSS/Atom/JSON feeds into one feed.
 - 🎯 **Automated AI Resume Skill Matcher**: Parses PDF/DOCX resumes and computes realistic 0–100% match scores for every listing.
 - ⚡ **Persistent Multi-Parameter Filtering**: Seamlessly filter job feeds by Keywords, Location, Platform, and Match Score sort order. Active filter state persists across tab switches and browser navigation.
 - 📱 **100% Mobile-Friendly & Responsive**: Responsive design with slide-up filter bottom-sheets, custom touch targets, and flexible card grids across all viewports.
