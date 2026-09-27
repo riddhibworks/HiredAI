@@ -194,6 +194,13 @@ export default function JobFeedPage() {
   }, []);
 
   useEffect(() => {
+    const p = searchParams.get('platform');
+    if (p !== null && p !== platform) {
+      setPlatform(p);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
     load();
   }, [platform, sort]);
 

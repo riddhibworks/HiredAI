@@ -434,49 +434,86 @@ export default function HomePage() {
             >
               Aggregated Job Pipeline
             </Typography>
-            <Typography variant="h6" sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' }, color: '#241019', fontWeight: 700 }}>
+            <Typography variant="h6" sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' }, color: '#241019', fontWeight: 700, mb: 0.75 }}>
               Pulling real-time remote jobs from major boards
+            </Typography>
+            <Typography variant="caption" sx={{ color: '#8A6E76', display: 'block' }}>
+              Click any source platform below to explore filtered listings
             </Typography>
           </Grid>
           <Grid item xs={12} lg={8}>
-            <Grid container spacing={1.5}>
+            <Box
+              sx={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: 1.5,
+                justifyContent: 'center',
+                alignItems: 'stretch',
+              }}
+            >
               {SOURCE_PLATFORMS.map((platform) => (
-                <Grid item xs={6} sm={4} key={platform.name}>
-                  <Box
-                    sx={{
-                      p: 1.5,
-                      borderRadius: 2.5,
-                      bgcolor: '#FFF9FA',
-                      border: '1px solid #EFE6E8',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 1.25,
-                      height: '100%',
-                      transition: 'all 0.2s ease',
-                      '&:hover': {
-                        borderColor: '#E8336D',
-                        bgcolor: '#FFFFFF',
-                        boxShadow: '0 4px 12px rgba(232, 51, 109, 0.08)',
-                      },
-                    }}
-                  >
-                    <CheckCircleOutlineIcon sx={{ color: '#E8336D', fontSize: 20, flexShrink: 0 }} />
-                    <Box sx={{ minWidth: 0 }}>
-                      <Typography
-                        variant="body2"
-                        noWrap
-                        sx={{ fontWeight: 700, color: '#241019', fontSize: '0.85rem' }}
-                      >
-                        {platform.name}
-                      </Typography>
-                      <Typography variant="caption" noWrap sx={{ color: '#8A6E76', fontSize: '0.75rem', display: 'block' }}>
-                        {platform.count}
-                      </Typography>
-                    </Box>
+                <Box
+                  key={platform.name}
+                  onClick={() => navigate(`/jobs?platform=${encodeURIComponent(platform.name)}`)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      navigate(`/jobs?platform=${encodeURIComponent(platform.name)}`);
+                    }
+                  }}
+                  sx={{
+                    flex: {
+                      xs: '1 1 calc(50% - 12px)',
+                      sm: '0 1 calc(33.333% - 12px)',
+                      md: '0 1 calc(25% - 12px)',
+                    },
+                    minWidth: { xs: '135px', sm: '150px' },
+                    p: 1.5,
+                    borderRadius: 2.5,
+                    bgcolor: '#FFF9FA',
+                    border: '1px solid #EFE6E8',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    textAlign: 'center',
+                    gap: 0.5,
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                    transition: 'all 0.2s ease',
+                    '&:hover': {
+                      borderColor: '#E8336D',
+                      bgcolor: '#FFFFFF',
+                      transform: 'translateY(-2px)',
+                      boxShadow: '0 6px 16px rgba(232, 51, 109, 0.12)',
+                    },
+                    '&:active': {
+                      transform: 'translateY(0)',
+                    },
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, justifyContent: 'center' }}>
+                    <CheckCircleOutlineIcon sx={{ color: '#E8336D', fontSize: 16, flexShrink: 0 }} />
+                    <Typography
+                      variant="body2"
+                      noWrap
+                      sx={{ fontWeight: 700, color: '#241019', fontSize: '0.85rem' }}
+                    >
+                      {platform.name}
+                    </Typography>
                   </Box>
-                </Grid>
+                  <Typography
+                    variant="caption"
+                    noWrap
+                    sx={{ color: '#8A6E76', fontSize: '0.75rem', display: 'block' }}
+                  >
+                    {platform.count} • View Feed →
+                  </Typography>
+                </Box>
               ))}
-            </Grid>
+            </Box>
           </Grid>
         </Grid>
       </Paper>
