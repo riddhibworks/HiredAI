@@ -156,19 +156,25 @@ public class JobFeedCacheService {
         if (redisTemplate == null || listings == null || listings.isEmpty()) return;
         CompletableFuture.runAsync(() -> {
             try {
-                Map<String, String> map = new HashMap<>(listings.size());
-                for (JobListing l : listings) {
-                    try {
-                        map.put(l.getId(), redisObjectMapper.writeValueAsString(l));
-                    } catch (Exception e) {
-                        log.debug("Serialization error for listing {}: {}", l.getId(), e.getMessage());
+                int batchSize = 25;
+                int totalSynced = 0;
+                for (int i = 0; i < listings.size(); i += batchSize) {
+                    List<JobListing> chunk = listings.subList(i, Math.min(i + batchSize, listings.size()));
+                    Map<String, String> map = new HashMap<>(chunk.size());
+                    for (JobListing l : chunk) {
+                        try {
+                            map.put(l.getId(), redisObjectMapper.writeValueAsString(l));
+                        } catch (Exception e) {
+                            log.debug("Serialization error for listing {}: {}", l.getId(), e.getMessage());
+                        }
+                    }
+                    if (!map.isEmpty()) {
+                        redisTemplate.opsForHash().putAll(REDIS_JOBS_KEY, map);
+                        totalSynced += map.size();
                     }
                 }
-                if (!map.isEmpty()) {
-                    redisTemplate.opsForHash().putAll(REDIS_JOBS_KEY, map);
-                    redisTemplate.expire(REDIS_JOBS_KEY, Duration.ofDays(7));
-                    log.debug("[FeedCache] Synced {} listings to Redis key '{}'", map.size(), REDIS_JOBS_KEY);
-                }
+                redisTemplate.expire(REDIS_JOBS_KEY, Duration.ofDays(7));
+                log.info("[FeedCache] Synced {} listings to Redis key '{}'", totalSynced, REDIS_JOBS_KEY);
             } catch (Exception e) {
                 log.warn("[FeedCache] Failed to sync to Redis: {}", e.getMessage());
             }

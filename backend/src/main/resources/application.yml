@@ -25,8 +25,8 @@ spring:
       password: ${REDIS_PASSWORD:}
       ssl:
         enabled: ${REDIS_SSL:false}
-      timeout: 3000ms
-      connect-timeout: 3000ms
+      timeout: 10000ms
+      connect-timeout: 10000ms
   servlet:
     multipart:
       max-file-size: 10MB
