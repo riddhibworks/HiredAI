@@ -58,13 +58,13 @@ const SAMPLE_FEATURED_JOBS = [
 ];
 
 const SOURCE_PLATFORMS = [
-  { name: 'Google Jobs', count: '500+ roles' },
-  { name: 'WeWorkRemotely', count: '480+ roles' },
-  { name: 'RemoteOK', count: '450+ roles' },
-  { name: 'Himalayas', count: '420+ roles' },
-  { name: 'Jobicy', count: '380+ roles' },
-  { name: 'Remotive', count: '310+ roles' },
-  { name: 'Arbeitnow', count: '280+ roles' },
+  'Google Jobs',
+  'WeWorkRemotely',
+  'RemoteOK',
+  'Himalayas',
+  'Jobicy',
+  'Remotive',
+  'Arbeitnow',
 ];
 
 export default function HomePage() {
@@ -446,40 +446,33 @@ export default function HomePage() {
               sx={{
                 display: 'flex',
                 flexWrap: 'wrap',
-                gap: 1.5,
+                gap: { xs: 1, sm: 1.25 },
                 justifyContent: 'center',
-                alignItems: 'stretch',
+                alignItems: 'center',
               }}
             >
               {SOURCE_PLATFORMS.map((platform) => (
                 <Box
-                  key={platform.name}
-                  onClick={() => navigate(`/jobs?platform=${encodeURIComponent(platform.name)}`)}
+                  key={platform}
+                  onClick={() => navigate(`/jobs?platform=${encodeURIComponent(platform)}`)}
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault();
-                      navigate(`/jobs?platform=${encodeURIComponent(platform.name)}`);
+                      navigate(`/jobs?platform=${encodeURIComponent(platform)}`);
                     }
                   }}
                   sx={{
-                    flex: {
-                      xs: '1 1 calc(50% - 12px)',
-                      sm: '0 1 calc(33.333% - 12px)',
-                      md: '0 1 calc(25% - 12px)',
-                    },
-                    minWidth: { xs: '135px', sm: '150px' },
-                    p: 1.5,
-                    borderRadius: 2.5,
+                    py: { xs: 0.85, sm: 1.1 },
+                    px: { xs: 1.5, sm: 2 },
+                    borderRadius: 3,
                     bgcolor: '#FFF9FA',
                     border: '1px solid #EFE6E8',
-                    display: 'flex',
-                    flexDirection: 'column',
+                    display: 'inline-flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    textAlign: 'center',
-                    gap: 0.5,
+                    gap: 0.75,
                     cursor: 'pointer',
                     userSelect: 'none',
                     transition: 'all 0.2s ease',
@@ -487,30 +480,32 @@ export default function HomePage() {
                       borderColor: '#E8336D',
                       bgcolor: '#FFFFFF',
                       transform: 'translateY(-2px)',
-                      boxShadow: '0 6px 16px rgba(232, 51, 109, 0.12)',
+                      boxShadow: '0 4px 12px rgba(232, 51, 109, 0.12)',
+                      '& .platform-arrow': {
+                        transform: 'translateX(3px)',
+                        color: '#A31346',
+                      },
                     },
                     '&:active': {
                       transform: 'translateY(0)',
                     },
                   }}
                 >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, justifyContent: 'center' }}>
-                    <CheckCircleOutlineIcon sx={{ color: '#E8336D', fontSize: 16, flexShrink: 0 }} />
-                    <Typography
-                      variant="body2"
-                      noWrap
-                      sx={{ fontWeight: 700, color: '#241019', fontSize: '0.85rem' }}
-                    >
-                      {platform.name}
-                    </Typography>
-                  </Box>
                   <Typography
-                    variant="caption"
+                    variant="body2"
                     noWrap
-                    sx={{ color: '#8A6E76', fontSize: '0.75rem', display: 'block' }}
+                    sx={{ fontWeight: 700, color: '#241019', fontSize: { xs: '0.8rem', sm: '0.85rem' } }}
                   >
-                    {platform.count} • View Feed →
+                    {platform}
                   </Typography>
+                  <ArrowForwardIcon
+                    className="platform-arrow"
+                    sx={{
+                      fontSize: 14,
+                      color: '#E8336D',
+                      transition: 'transform 0.2s ease, color 0.2s ease',
+                    }}
+                  />
                 </Box>
               ))}
             </Box>
