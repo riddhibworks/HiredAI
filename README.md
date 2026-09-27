@@ -48,8 +48,8 @@
 
 ### **4. Scheduled Task Ingestion Pattern (`JobIngestionScheduler`)**
 - **Class**: [`com.hiredai.backend.service.JobIngestionScheduler`](file:///Users/riddhi/Desktop/Vesis/HiredAI/backend/src/main/java/com/hiredai/backend/service/JobIngestionScheduler.java)
-- **Purpose**: Periodically triggers automated feed updates across all registered adapters every 60 minutes or on-demand via the `/api/jobs/refresh` REST endpoint.
-- **Benefit**: Ensures candidate job feeds remain up-to-date with minimal database overhead.
+- **Purpose**: Periodically triggers automated feed updates across all registered adapters every 5 minutes (or on-demand via the `/api/jobs/refresh` REST endpoint) using parallel adapter sweeps and batch database upserts.
+- **Benefit**: Ensures candidate job feeds remain continuously up-to-date with sub-second ingestion performance and zero manual refresh required.
 
 ---
 

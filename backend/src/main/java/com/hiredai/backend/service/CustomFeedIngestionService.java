@@ -18,14 +18,16 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
+import org.springframework.transaction.annotation.Transactional;
+
 import java.io.ByteArrayInputStream;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /** Ingests user-added RSS/Atom feeds and generic JSON APIs (see JobSource) into the shared JobListing table. */
 @Service
@@ -58,7 +60,10 @@ public class CustomFeedIngestionService {
             List<ParsedJob> parsed = source.getSourceType() == JobSourceType.JSON_API
                     ? parseJson(source.getFeedUrl(), FieldMapping.from(source))
                     : parseRss(source.getFeedUrl());
-            parsed.forEach(job -> upsert(source.getName(), job));
+            if (parsed.isEmpty()) {
+                return 0;
+            }
+            batchUpsert(source.getName(), parsed);
             log.info("Ingested {} listings from custom source {}", parsed.size(), source.getName());
             return parsed.size();
         } catch (Exception e) {
@@ -153,23 +158,42 @@ public class CustomFeedIngestionService {
         }
     }
 
-    private void upsert(String platformName, ParsedJob job) {
-        JobListing listing = jobListingRepository.findByPlatformAndExternalJobId(platformName, job.externalId())
-                .orElseGet(JobListing::new);
+    @Transactional
+    public void batchUpsert(String platformName, List<ParsedJob> jobs) {
+        Set<String> externalIds = jobs.stream()
+                .map(ParsedJob::externalId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
 
-        listing.setPlatform(platformName);
-        listing.setExternalJobId(job.externalId());
-        listing.setTitle(job.title());
-        listing.setCompany(job.company());
-        listing.setLocation(job.location());
-        listing.setDescription(job.description());
-        listing.setSourceUrl(job.sourceUrl());
-        if (listing.getPostedAt() == null) {
-            listing.setPostedAt(job.postedAt() != null ? job.postedAt() : Instant.now());
+        Map<String, JobListing> existingMap = jobListingRepository
+                .findByPlatformAndExternalJobIdIn(platformName, externalIds)
+                .stream()
+                .collect(Collectors.toMap(JobListing::getExternalJobId, Function.identity(), (a, b) -> a));
+
+        Map<String, JobListing> toSaveMap = new LinkedHashMap<>();
+        Instant now = Instant.now();
+
+        for (ParsedJob job : jobs) {
+            if (job.externalId() == null || job.externalId().isBlank()) {
+                continue;
+            }
+            JobListing listing = toSaveMap.computeIfAbsent(job.externalId(), id ->
+                    existingMap.getOrDefault(id, new JobListing()));
+
+            listing.setPlatform(platformName);
+            listing.setExternalJobId(job.externalId());
+            listing.setTitle(job.title());
+            listing.setCompany(job.company());
+            listing.setLocation(job.location());
+            listing.setDescription(job.description());
+            listing.setSourceUrl(job.sourceUrl());
+            if (listing.getPostedAt() == null) {
+                listing.setPostedAt(job.postedAt() != null ? job.postedAt() : now);
+            }
+            listing.setFetchedAt(now);
         }
-        listing.setFetchedAt(Instant.now());
 
-        jobListingRepository.save(listing);
+        jobListingRepository.saveAll(toSaveMap.values());
     }
 
     public record ParsedJob(String externalId, String title, String company, String location, String description,

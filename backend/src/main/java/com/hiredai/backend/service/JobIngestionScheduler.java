@@ -8,14 +8,17 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import org.springframework.transaction.annotation.Transactional;
+
 import java.time.Instant;
-import java.util.List;
+import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * Periodically pulls listings from each registered public job-source adapter and
- * upserts them into the shared JobListing table. Fetching is unauthenticated and
- * platform-agnostic across all users; per-user "enabled platforms" only filters what's
- * shown in a given user's feed (see JobListingService), not what gets fetched.
+ * upserts them into the shared JobListing table. Runs automatically on a 5-minute
+ * interval to keep job feeds continuously updated.
  */
 @Service
 @RequiredArgsConstructor
@@ -26,22 +29,28 @@ public class JobIngestionScheduler {
     private final JobListingRepository jobListingRepository;
     private final CustomFeedIngestionService customFeedIngestionService;
 
-    @Scheduled(fixedRateString = "${app.ingestion.interval-ms:3600000}")
+    @Scheduled(fixedRateString = "${app.ingestion.interval-ms:300000}", initialDelay = 5000)
     public void ingestAll() {
+        log.info("Starting scheduled 5-minute job ingestion sweep across all adapters");
         ingestFromAllAdapters();
     }
 
-    /** Synchronous, on-demand refresh across all adapters (used by the manual "Refresh" action). */
+    /** Parallel, on-demand refresh across all adapters with batch DB persistence. */
     public int ingestFromAllAdapters() {
         var criteria = new JobSourceAdapter.SearchCriteria(List.of(), List.of(), null, null);
-        int fromAdapters = adapters.stream().mapToInt(adapter -> ingestFromAdapter(adapter, criteria)).sum();
+        int fromAdapters = adapters.parallelStream()
+                .mapToInt(adapter -> ingestFromAdapter(adapter, criteria))
+                .sum();
         return fromAdapters + customFeedIngestionService.ingestAll();
     }
 
     private int ingestFromAdapter(JobSourceAdapter adapter, JobSourceAdapter.SearchCriteria criteria) {
         try {
             List<JobSourceAdapter.JobListingData> results = adapter.fetchJobs(criteria);
-            results.forEach(result -> upsert(adapter.getPlatformName(), result));
+            if (results == null || results.isEmpty()) {
+                return 0;
+            }
+            batchUpsert(adapter.getPlatformName(), results);
             log.info("Ingested {} listings from {}", results.size(), adapter.getPlatformName());
             return results.size();
         } catch (Exception e) {
@@ -50,23 +59,42 @@ public class JobIngestionScheduler {
         }
     }
 
-    private void upsert(String platformName, JobSourceAdapter.JobListingData result) {
-        JobListing listing = jobListingRepository.findByPlatformAndExternalJobId(platformName, result.externalJobId())
-                .orElseGet(JobListing::new);
+    @Transactional
+    public void batchUpsert(String platformName, List<JobSourceAdapter.JobListingData> results) {
+        Set<String> externalIds = results.stream()
+                .map(JobSourceAdapter.JobListingData::externalJobId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
 
-        listing.setPlatform(platformName);
-        listing.setExternalJobId(result.externalJobId());
-        listing.setTitle(result.title());
-        listing.setCompany(result.company());
-        listing.setLocation(result.location());
-        listing.setDescription(result.description());
-        listing.setSalaryRange(result.salaryRange());
-        listing.setSourceUrl(result.sourceUrl());
-        if (listing.getPostedAt() == null) {
-            listing.setPostedAt(result.postedAt() != null ? result.postedAt() : Instant.now());
+        Map<String, JobListing> existingMap = jobListingRepository
+                .findByPlatformAndExternalJobIdIn(platformName, externalIds)
+                .stream()
+                .collect(Collectors.toMap(JobListing::getExternalJobId, Function.identity(), (a, b) -> a));
+
+        Map<String, JobListing> toSaveMap = new LinkedHashMap<>();
+        Instant now = Instant.now();
+
+        for (JobSourceAdapter.JobListingData result : results) {
+            if (result.externalJobId() == null || result.externalJobId().isBlank()) {
+                continue;
+            }
+            JobListing listing = toSaveMap.computeIfAbsent(result.externalJobId(), id ->
+                    existingMap.getOrDefault(id, new JobListing()));
+
+            listing.setPlatform(platformName);
+            listing.setExternalJobId(result.externalJobId());
+            listing.setTitle(result.title());
+            listing.setCompany(result.company());
+            listing.setLocation(result.location());
+            listing.setDescription(result.description());
+            listing.setSalaryRange(result.salaryRange());
+            listing.setSourceUrl(result.sourceUrl());
+            if (listing.getPostedAt() == null) {
+                listing.setPostedAt(result.postedAt() != null ? result.postedAt() : now);
+            }
+            listing.setFetchedAt(now);
         }
-        listing.setFetchedAt(Instant.now());
 
-        jobListingRepository.save(listing);
+        jobListingRepository.saveAll(toSaveMap.values());
     }
 }

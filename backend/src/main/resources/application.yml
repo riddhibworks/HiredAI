@@ -47,7 +47,7 @@ app:
   storage:
     resume-dir: ${RESUME_STORAGE_DIR:./data/resumes}
   ingestion:
-    interval-ms: ${INGESTION_INTERVAL_MS:3600000}
+    interval-ms: ${INGESTION_INTERVAL_MS:300000}
 
 
 logging:
