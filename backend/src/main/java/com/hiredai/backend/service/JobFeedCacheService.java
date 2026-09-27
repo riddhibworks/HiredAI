@@ -46,29 +46,32 @@ public class JobFeedCacheService {
             log.info("[FeedCache] RedisTemplate not configured, running in pure in-memory mode");
             return;
         }
-        try {
-            long start = System.currentTimeMillis();
-            Map<Object, Object> entries = redisTemplate.opsForHash().entries(REDIS_JOBS_KEY);
-            if (entries != null && !entries.isEmpty()) {
+        CompletableFuture.runAsync(() -> {
+            try {
+                long start = System.currentTimeMillis();
                 int loaded = 0;
-                for (Map.Entry<Object, Object> entry : entries.entrySet()) {
-                    try {
-                        String json = (String) entry.getValue();
-                        JobListing listing = redisObjectMapper.readValue(json, JobListing.class);
-                        localCache.put(listing.getId(), listing);
-                        loaded++;
-                    } catch (Exception e) {
-                        log.debug("[FeedCache] Failed to deserialize listing: {}", e.getMessage());
+                org.springframework.data.redis.core.ScanOptions options =
+                        org.springframework.data.redis.core.ScanOptions.scanOptions().count(50).build();
+                try (org.springframework.data.redis.core.Cursor<Map.Entry<Object, Object>> cursor =
+                             redisTemplate.opsForHash().scan(REDIS_JOBS_KEY, options)) {
+                    while (cursor.hasNext()) {
+                        Map.Entry<Object, Object> entry = cursor.next();
+                        try {
+                            String json = (String) entry.getValue();
+                            JobListing listing = redisObjectMapper.readValue(json, JobListing.class);
+                            localCache.put(listing.getId(), listing);
+                            loaded++;
+                        } catch (Exception e) {
+                            log.debug("[FeedCache] Failed to deserialize listing: {}", e.getMessage());
+                        }
                     }
                 }
-                log.info("[FeedCache] Loaded {} job listings from Redis key '{}' in {}ms",
-                        loaded, REDIS_JOBS_KEY, System.currentTimeMillis() - start);
-            } else {
-                log.info("[FeedCache] Redis cache key '{}' is currently empty", REDIS_JOBS_KEY);
+                log.info("[FeedCache] Loaded {} job listings from Redis key '{}' in {}ms (total local={})",
+                        loaded, REDIS_JOBS_KEY, System.currentTimeMillis() - start, localCache.size());
+            } catch (Exception e) {
+                log.warn("[FeedCache] Could not load listings from Redis at startup (falling back to memory): {}", e.getMessage());
             }
-        } catch (Exception e) {
-            log.warn("[FeedCache] Could not load listings from Redis at startup (falling back to memory): {}", e.getMessage());
-        }
+        });
     }
 
     public static String generateId(String platform, String externalJobId) {
