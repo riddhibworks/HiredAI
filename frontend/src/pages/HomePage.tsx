@@ -29,7 +29,6 @@ const SAMPLE_FEATURED_JOBS = [
     location: 'Remote (Global)',
     salary: '$150,000 - $190,000',
     platform: 'WeWorkRemotely',
-    matchScore: 96,
     tags: ['React', 'TypeScript', 'Node.js'],
     posted: '2 hours ago',
   },
@@ -40,7 +39,6 @@ const SAMPLE_FEATURED_JOBS = [
     location: 'Remote (US/EU)',
     salary: '$140,000 - $175,000',
     platform: 'RemoteOK',
-    matchScore: 92,
     tags: ['Figma', 'Design Systems'],
     posted: '5 hours ago',
   },
@@ -51,7 +49,6 @@ const SAMPLE_FEATURED_JOBS = [
     location: 'Remote (Anywhere)',
     salary: '$160,000 - $210,000',
     platform: 'Arbeitnow',
-    matchScore: 89,
     tags: ['Go', 'PostgreSQL', 'Kubernetes'],
     posted: '1 day ago',
   },
@@ -563,7 +560,7 @@ export default function HomePage() {
                 }}
               >
                 <CardContent sx={{ p: 3 }}>
-                  <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1.5}>
+                  <Box display="flex" justifyContent="space-between" alignItems="center" mb={1.5}>
                     <Chip
                       label={job.platform}
                       size="small"
@@ -575,16 +572,9 @@ export default function HomePage() {
                         fontSize: '0.75rem',
                       }}
                     />
-                    <Chip
-                      label={`${job.matchScore}% Match`}
-                      size="small"
-                      sx={{
-                        bgcolor: '#FFD9E4',
-                        color: '#A31346',
-                        fontWeight: 700,
-                        fontSize: '0.75rem',
-                      }}
-                    />
+                    <Typography variant="caption" sx={{ color: '#8A6E76', fontSize: '0.75rem', fontWeight: 500 }}>
+                      {job.posted}
+                    </Typography>
                   </Box>
 
                   <Typography variant="h6" sx={{ fontSize: '1.1rem', mb: 0.5, color: '#241019' }}>
