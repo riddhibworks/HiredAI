@@ -1,26 +1,75 @@
 package com.hiredai.backend.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hiredai.backend.adapter.JobSourceAdapter;
 import com.hiredai.backend.entity.JobListing;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Ultra-fast in-memory cache for all ingested public job listings.
- * Eliminates high-volume database write churn and row locking on Postgres,
- * enabling sub-millisecond filtering, searching, and instant feed refresh.
- * Persistent storage in PostgreSQL is reserved on-demand for saved/applied jobs.
+ * Two-tier caching service for job listings:
+ * - L1: High-speed in-memory ConcurrentHashMap in JVM heap (< 0.05ms latency).
+ * - L2: Shared Redis Hash cache (key: 'hiredai:jobs') persisting listings across restarts/deployments.
+ * Gracefully degrades to pure in-memory mode if Redis is temporarily unreachable.
  */
 @Service
 @Slf4j
 public class JobFeedCacheService {
 
-    private final Map<String, JobListing> cache = new ConcurrentHashMap<>();
+    public static final String REDIS_JOBS_KEY = "hiredai:jobs";
+
+    private final Map<String, JobListing> localCache = new ConcurrentHashMap<>();
+    private final StringRedisTemplate redisTemplate;
+    private final ObjectMapper redisObjectMapper;
+
+    public JobFeedCacheService(
+            @Autowired(required = false) StringRedisTemplate redisTemplate,
+            @Autowired(required = false) @Qualifier("redisObjectMapper") ObjectMapper redisObjectMapper) {
+        this.redisTemplate = redisTemplate;
+        this.redisObjectMapper = redisObjectMapper != null ? redisObjectMapper : new ObjectMapper();
+    }
+
+    @PostConstruct
+    public void initFromRedis() {
+        if (redisTemplate == null) {
+            log.info("[FeedCache] RedisTemplate not configured, running in pure in-memory mode");
+            return;
+        }
+        try {
+            long start = System.currentTimeMillis();
+            Map<Object, Object> entries = redisTemplate.opsForHash().entries(REDIS_JOBS_KEY);
+            if (entries != null && !entries.isEmpty()) {
+                int loaded = 0;
+                for (Map.Entry<Object, Object> entry : entries.entrySet()) {
+                    try {
+                        String json = (String) entry.getValue();
+                        JobListing listing = redisObjectMapper.readValue(json, JobListing.class);
+                        localCache.put(listing.getId(), listing);
+                        loaded++;
+                    } catch (Exception e) {
+                        log.debug("[FeedCache] Failed to deserialize listing: {}", e.getMessage());
+                    }
+                }
+                log.info("[FeedCache] Loaded {} job listings from Redis key '{}' in {}ms",
+                        loaded, REDIS_JOBS_KEY, System.currentTimeMillis() - start);
+            } else {
+                log.info("[FeedCache] Redis cache key '{}' is currently empty", REDIS_JOBS_KEY);
+            }
+        } catch (Exception e) {
+            log.warn("[FeedCache] Could not load listings from Redis at startup (falling back to memory): {}", e.getMessage());
+        }
+    }
 
     public static String generateId(String platform, String externalJobId) {
         if (externalJobId == null || externalJobId.isBlank()) {
@@ -31,15 +80,18 @@ public class JobFeedCacheService {
 
     public void initFromList(List<JobListing> listings) {
         if (listings == null || listings.isEmpty()) return;
+        List<JobListing> toSync = new ArrayList<>();
         for (JobListing listing : listings) {
             String id = listing.getId();
             if (id == null || id.isBlank()) {
                 id = generateId(listing.getPlatform(), listing.getExternalJobId());
                 listing.setId(id);
             }
-            cache.put(id, listing);
+            localCache.put(id, listing);
+            toSync.add(listing);
         }
-        log.info("[FeedCache] Initialized in-memory cache with {} listings from DB", cache.size());
+        log.info("[FeedCache] Initialized local cache with {} listings (total={})", listings.size(), localCache.size());
+        syncToRedis(toSync);
     }
 
     public void putListingData(String platformName, List<JobSourceAdapter.JobListingData> dataList) {
@@ -47,12 +99,14 @@ public class JobFeedCacheService {
         Instant now = Instant.now();
         int added = 0;
         int updated = 0;
+        List<JobListing> updatedListings = new ArrayList<>();
+
         for (JobSourceAdapter.JobListingData data : dataList) {
             if (data.externalJobId() == null || data.externalJobId().isBlank()) {
                 continue;
             }
             String id = generateId(platformName, data.externalJobId());
-            JobListing existing = cache.get(id);
+            JobListing existing = localCache.get(id);
             if (existing == null) {
                 JobListing listing = new JobListing();
                 listing.setId(id);
@@ -66,7 +120,8 @@ public class JobFeedCacheService {
                 listing.setSourceUrl(data.sourceUrl());
                 listing.setPostedAt(data.postedAt() != null ? data.postedAt() : now);
                 listing.setFetchedAt(now);
-                cache.put(id, listing);
+                localCache.put(id, listing);
+                updatedListings.add(listing);
                 added++;
             } else {
                 existing.setTitle(data.title());
@@ -79,11 +134,13 @@ public class JobFeedCacheService {
                     existing.setPostedAt(data.postedAt());
                 }
                 existing.setFetchedAt(now);
+                updatedListings.add(existing);
                 updated++;
             }
         }
         log.info("[FeedCache] Cached {} listings for {} ({} new, {} updated | total in-memory={})",
-                dataList.size(), platformName, added, updated, cache.size());
+                dataList.size(), platformName, added, updated, localCache.size());
+        syncToRedis(updatedListings);
     }
 
     public void putListing(JobListing listing) {
@@ -91,20 +148,60 @@ public class JobFeedCacheService {
         if (listing.getId() == null || listing.getId().isBlank()) {
             listing.setId(generateId(listing.getPlatform(), listing.getExternalJobId()));
         }
-        cache.put(listing.getId(), listing);
+        localCache.put(listing.getId(), listing);
+        syncToRedis(List.of(listing));
+    }
+
+    private void syncToRedis(List<JobListing> listings) {
+        if (redisTemplate == null || listings == null || listings.isEmpty()) return;
+        CompletableFuture.runAsync(() -> {
+            try {
+                Map<String, String> map = new HashMap<>(listings.size());
+                for (JobListing l : listings) {
+                    try {
+                        map.put(l.getId(), redisObjectMapper.writeValueAsString(l));
+                    } catch (Exception e) {
+                        log.debug("Serialization error for listing {}: {}", l.getId(), e.getMessage());
+                    }
+                }
+                if (!map.isEmpty()) {
+                    redisTemplate.opsForHash().putAll(REDIS_JOBS_KEY, map);
+                    redisTemplate.expire(REDIS_JOBS_KEY, Duration.ofDays(7));
+                    log.debug("[FeedCache] Synced {} listings to Redis key '{}'", map.size(), REDIS_JOBS_KEY);
+                }
+            } catch (Exception e) {
+                log.warn("[FeedCache] Failed to sync to Redis: {}", e.getMessage());
+            }
+        });
     }
 
     public Optional<JobListing> getById(String id) {
         if (id == null) return Optional.empty();
-        return Optional.ofNullable(cache.get(id));
+        JobListing found = localCache.get(id);
+        if (found != null) {
+            return Optional.of(found);
+        }
+        if (redisTemplate != null) {
+            try {
+                Object val = redisTemplate.opsForHash().get(REDIS_JOBS_KEY, id);
+                if (val != null) {
+                    JobListing listing = redisObjectMapper.readValue((String) val, JobListing.class);
+                    localCache.put(listing.getId(), listing);
+                    return Optional.of(listing);
+                }
+            } catch (Exception e) {
+                log.debug("[FeedCache] Redis lookup failed for id {}: {}", id, e.getMessage());
+            }
+        }
+        return Optional.empty();
     }
 
     public List<JobListing> getAllListings() {
-        return new ArrayList<>(cache.values());
+        return new ArrayList<>(localCache.values());
     }
 
     public List<String> getAvailablePlatforms() {
-        return cache.values().stream()
+        return localCache.values().stream()
                 .map(JobListing::getPlatform)
                 .filter(Objects::nonNull)
                 .filter(p -> !p.isBlank())
@@ -114,6 +211,6 @@ public class JobFeedCacheService {
     }
 
     public int size() {
-        return cache.size();
+        return localCache.size();
     }
 }
