@@ -3,6 +3,7 @@ package com.hiredai.backend.service;
 import com.hiredai.backend.entity.Resume;
 import com.hiredai.backend.repository.ResumeRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ResumeService {
 
     private final ResumeRepository resumeRepository;
@@ -30,6 +32,7 @@ public class ResumeService {
 
     @Transactional
     public Resume upload(String userId, String label, MultipartFile file) {
+        log.info("[Resume] Starting upload for user={}, filename={}, size={}", userId, file.getOriginalFilename(), file.getSize());
         if (file.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File is empty");
         }
@@ -40,6 +43,7 @@ public class ResumeService {
         boolean isDoc = originalFilename.endsWith(".docx") || originalFilename.endsWith(".doc") || contentType.contains("word") || contentType.contains("msword");
 
         if (!isPdf && !isDoc) {
+            log.warn("[Resume] Rejected upload — unsupported file type: {} (contentType={})", originalFilename, contentType);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only PDF or DOCX/DOC files are supported");
         }
 
@@ -53,8 +57,12 @@ public class ResumeService {
 
             byte[] bytes = file.getBytes();
             Files.write(target, bytes);
+            log.debug("[Resume] Saved file to disk: {}", target);
 
+            long parseStart = System.currentTimeMillis();
             String parsedJson = resumeParsingService.parseToJson(bytes);
+            long parseElapsed = System.currentTimeMillis() - parseStart;
+            log.info("[Resume] Parsed resume in {}ms (json length={})", parseElapsed, parsedJson != null ? parsedJson.length() : 0);
 
             Resume resume = new Resume();
             resume.setUserId(userId);
@@ -63,28 +71,36 @@ public class ResumeService {
             resume.setParsedJson(parsedJson);
             resume.setDefault(resumeRepository.findByUserId(userId).isEmpty());
 
-            return resumeRepository.save(resume);
+            Resume saved = resumeRepository.save(resume);
+            log.info("[Resume] Upload complete: id={}, user={}, label={}", saved.getId(), userId, saved.getLabel());
+            return saved;
         } catch (IOException e) {
+            log.error("[Resume] Failed to store resume file for user={}: {}", userId, e.getMessage());
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to store resume file");
         }
     }
 
     @Transactional(readOnly = true)
     public List<Resume> listForUser(String userId) {
-        return resumeRepository.findByUserId(userId);
+        List<Resume> resumes = resumeRepository.findByUserId(userId);
+        log.debug("[Resume] listForUser: user={}, count={}", userId, resumes.size());
+        return resumes;
     }
 
     @Transactional
     public void delete(String userId, String resumeId) {
+        log.info("[Resume] Deleting resume id={} for user={}", resumeId, userId);
         Resume resume = resumeRepository.findByIdAndUserId(resumeId, userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Resume not found"));
 
         try {
             Files.deleteIfExists(Paths.get(resume.getFileUrl()));
+            log.debug("[Resume] Deleted file from disk: {}", resume.getFileUrl());
         } catch (IOException ignored) {
-            // best-effort cleanup; DB record removal below is the source of truth
+            log.debug("[Resume] Could not delete file from disk: {}", resume.getFileUrl());
         }
 
         resumeRepository.delete(resume);
+        log.info("[Resume] Deleted resume id={}", resumeId);
     }
 }

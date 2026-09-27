@@ -12,6 +12,7 @@ import com.hiredai.backend.service.SavedJobService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -22,6 +23,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/jobs")
 @RequiredArgsConstructor
+@Slf4j
 @Tag(name = "Job Listings", description = "Endpoints for searching, saving, and managing job listings")
 public class JobListingController {
 
@@ -41,13 +43,16 @@ public class JobListingController {
     public ResponseEntity<List<String>> platforms() {
         long now = System.currentTimeMillis();
         if (cachedPlatforms != null && (now - platformsCacheTime < 300_000)) {
+            log.debug("GET /platforms — returning cached platforms ({} entries)", cachedPlatforms.size());
             return ResponseEntity.ok(cachedPlatforms);
         }
+        log.info("GET /platforms — cache miss, rebuilding platform list");
         List<String> names = new java.util.ArrayList<>(adapters.stream().map(JobSourceAdapter::getPlatformName).toList());
         jobSourceRepository.findByEnabledTrue().forEach(source -> names.add(source.getName()));
         List<String> result = names.stream().distinct().sorted().toList();
         cachedPlatforms = result;
         platformsCacheTime = now;
+        log.info("GET /platforms — built platform list with {} entries: {}", result.size(), result);
         return ResponseEntity.ok(result);
     }
 
@@ -62,25 +67,34 @@ public class JobListingController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
 
+        long start = System.currentTimeMillis();
+        log.info("GET /jobs — keyword={}, location={}, platform={}, sort={}, page={}, size={}", keyword, location, platform, sort, page, size);
         var results = jobListingService.search(currentUserProvider.getUserId(), keyword, location, platform, minMatchScore, sort, page, size);
+        long elapsed = System.currentTimeMillis() - start;
+        log.info("GET /jobs — returned {} jobs (total={}) in {}ms", results.getContent().size(), results.getTotalElements(), elapsed);
         return ResponseEntity.ok(results);
     }
 
     @Operation(summary = "Get detailed information for a specific job listing")
     @GetMapping("/{id}")
     public ResponseEntity<JobListingResponse> get(@PathVariable String id) {
-        return ResponseEntity.ok(jobListingService.getOrThrow(currentUserProvider.getUserId(), id));
+        log.info("GET /jobs/{} — fetching detail", id);
+        var result = jobListingService.getOrThrow(currentUserProvider.getUserId(), id);
+        log.debug("GET /jobs/{} — found: {} at {}", id, result.title(), result.company());
+        return ResponseEntity.ok(result);
     }
 
     @Operation(summary = "Save a job listing for current user")
     @PostMapping("/{id}/save")
     public ResponseEntity<SavedJobResponse> save(@PathVariable String id) {
+        log.info("POST /jobs/{}/save — user={}", id, currentUserProvider.getUserId());
         return ResponseEntity.ok(savedJobService.save(currentUserProvider.getUserId(), id));
     }
 
     @Operation(summary = "Unsave a job listing for current user")
     @DeleteMapping("/{id}/save")
     public ResponseEntity<Void> unsave(@PathVariable String id) {
+        log.info("DELETE /jobs/{}/save — user={}", id, currentUserProvider.getUserId());
         savedJobService.unsave(currentUserProvider.getUserId(), id);
         return ResponseEntity.noContent().build();
     }
@@ -89,6 +103,7 @@ public class JobListingController {
     @Operation(summary = "Mark a saved job as applied with notes")
     @PutMapping("/{id}/mark-applied")
     public ResponseEntity<SavedJobResponse> markApplied(@PathVariable String id, @RequestBody MarkAppliedRequest request) {
+        log.info("PUT /jobs/{}/mark-applied — applied={}, user={}", id, request.applied(), currentUserProvider.getUserId());
         return ResponseEntity.ok(savedJobService.markApplied(currentUserProvider.getUserId(), id, request.applied(), request.notes()));
     }
 
@@ -97,6 +112,7 @@ public class JobListingController {
     @PostMapping("/refresh")
     public ResponseEntity<Map<String, Integer>> refresh() {
         int count = java.util.concurrent.ThreadLocalRandom.current().nextInt(520, 1180);
+        log.info("POST /jobs/refresh — triggering async ingestion, returning dummy count={}", count);
         jobIngestionScheduler.triggerAsyncIngestion();
         return ResponseEntity.ok(Map.of("fetched", count));
     }

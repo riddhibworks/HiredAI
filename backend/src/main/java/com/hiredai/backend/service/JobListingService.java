@@ -7,6 +7,7 @@ import com.hiredai.backend.repository.JobListingRepository;
 import com.hiredai.backend.repository.JobListingSpecifications;
 import com.hiredai.backend.repository.ResumeRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Sort;
@@ -21,6 +22,7 @@ import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class JobListingService {
 
     private final JobListingRepository jobListingRepository;
@@ -36,6 +38,7 @@ public class JobListingService {
 
     public void invalidateCache() {
         this.defaultFeedCache = null;
+        log.debug("[Feed] Default feed cache invalidated");
     }
 
     public Page<JobListingResponse> search(String userId, String keyword, String location, String platform,
@@ -51,8 +54,10 @@ public class JobListingService {
         if (isDefaultPageZero) {
             CachedFeed cached = defaultFeedCache;
             if (cached != null && (System.currentTimeMillis() - cached.timestamp() < CACHE_TTL_MS)) {
+                log.debug("[Feed] Cache HIT for default page 0 — returning {} jobs (age={}ms)", cached.page().getContent().size(), System.currentTimeMillis() - cached.timestamp());
                 return cached.page();
             }
+            log.debug("[Feed] Cache MISS for default page 0 — querying database");
         }
 
         Specification<JobListing> spec = Specification.allOf(Stream.of(
@@ -80,17 +85,21 @@ public class JobListingService {
         Page<JobListingResponse> pageResult = new org.springframework.data.domain.PageImpl<>(content, results.getPageable(), results.getTotalElements());
         if (isDefaultPageZero) {
             defaultFeedCache = new CachedFeed(System.currentTimeMillis(), pageResult);
+            log.debug("[Feed] Cached default page 0 with {} jobs", content.size());
         }
+        log.debug("[Feed] Search returned {} results from {} DB rows (keyword={}, platform={}, page={})", content.size(), results.getTotalElements(), keyword, platform, page);
         return pageResult;
     }
 
     public JobListingResponse getOrThrow(String userId, String id) {
+        log.debug("[Feed] getOrThrow id={}, userId={}", id, userId);
         JobListing listing = jobListingRepository.findById(id)
                 .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
                         org.springframework.http.HttpStatus.NOT_FOUND, "Job listing not found"));
         String resumeText = defaultResumeText(userId);
         Set<String> savedIds = savedJobService.savedJobIdsForUser(userId);
         Set<String> appliedIds = savedJobService.appliedJobIdsForUser(userId);
+        log.debug("[Feed] Found listing id={}: '{}' by {} on {}", id, listing.getTitle(), listing.getCompany(), listing.getPlatform());
         return toResponse(listing, resumeText, savedIds, appliedIds);
     }
 

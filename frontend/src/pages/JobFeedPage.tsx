@@ -148,6 +148,8 @@ export default function JobFeedPage() {
     setLoading(true);
     setError(null);
     const searchKeyword = getCombinedKeywordString();
+    console.info('[JobFeed] Loading jobs — keyword=%s, location=%s, platform=%s, sort=%s', searchKeyword, location, platform, sort);
+    const loadStart = Date.now();
     jobsApi
       .search({
         keyword: searchKeyword || undefined,
@@ -158,11 +160,15 @@ export default function JobFeedPage() {
         size: PAGE_SIZE,
       })
       .then((res) => {
+        console.info('[JobFeed] Loaded %d jobs (total=%d) in %dms', res.content.length, res.totalElements, Date.now() - loadStart);
         setJobs(res.content);
         setPage(0);
         setTotalElements(res.totalElements);
       })
-      .catch(() => setError('Failed to load jobs from feed'))
+      .catch((err) => {
+        console.error('[JobFeed] Failed to load jobs:', err.message);
+        setError('Failed to load jobs from feed');
+      })
       .finally(() => setLoading(false));
   }, [getCombinedKeywordString, location, platform, sort]);
 
@@ -171,6 +177,8 @@ export default function JobFeedPage() {
     setLoadingMore(true);
     setError(null);
     const searchKeyword = getCombinedKeywordString();
+    console.info('[JobFeed] Loading more — page=%d', nextPage);
+    const moreStart = Date.now();
     jobsApi
       .search({
         keyword: searchKeyword || undefined,
@@ -181,16 +189,24 @@ export default function JobFeedPage() {
         size: PAGE_SIZE,
       })
       .then((res) => {
+        console.info('[JobFeed] Loaded %d more jobs in %dms (now showing %d)', res.content.length, Date.now() - moreStart, jobs.length + res.content.length);
         setJobs((prev) => [...prev, ...res.content]);
         setPage(nextPage);
         setTotalElements(res.totalElements);
       })
-      .catch(() => setError('Failed to load more jobs'))
+      .catch((err) => {
+        console.error('[JobFeed] Failed to load more jobs:', err.message);
+        setError('Failed to load more jobs');
+      })
       .finally(() => setLoadingMore(false));
   };
 
   useEffect(() => {
-    jobsApi.platforms().then(setPlatforms).catch(() => undefined);
+    console.info('[JobFeed] Fetching available platform list');
+    jobsApi.platforms().then((p) => {
+      console.info('[JobFeed] Got %d platforms: %s', p.length, p.join(', '));
+      setPlatforms(p);
+    }).catch(() => undefined);
   }, []);
 
   useEffect(() => {
@@ -249,6 +265,7 @@ export default function JobFeedPage() {
   };
 
   const handleResetFilters = () => {
+    console.info('[JobFeed] Resetting all filters');
     setKeywords([]);
     setKeywordInput('');
     setLocation('');
@@ -267,16 +284,20 @@ export default function JobFeedPage() {
     setRefreshing(true);
     setError(null);
     setInfo(null);
+    console.info('[JobFeed] Triggering manual refresh');
+    const refreshStart = Date.now();
     try {
       const res = await jobsApi.refresh();
       const count =
         res?.fetched && res.fetched >= 500 && res.fetched <= 1200
           ? res.fetched
           : Math.floor(Math.random() * (1200 - 500 + 1)) + 500;
+      console.info('[JobFeed] Refresh complete in %dms, reported count=%d', Date.now() - refreshStart, count);
       setInfo(`Pulled ${count} new listings from connected job sources.`);
       load();
     } catch {
       const count = Math.floor(Math.random() * (1200 - 500 + 1)) + 500;
+      console.warn('[JobFeed] Refresh request failed, showing fallback count=%d', count);
       setInfo(`Pulled ${count} new listings from connected job sources.`);
       load();
     } finally {
