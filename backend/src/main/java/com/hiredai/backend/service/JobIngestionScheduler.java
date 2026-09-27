@@ -7,24 +7,19 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * Periodically pulls listings from each registered public job-source adapter and
- * upserts them into the shared JobListing table. Runs automatically on a 5-minute
- * interval to keep job feeds continuously updated.
+ * Periodically pulls listings from public job-source adapters and custom feeds,
+ * caching them directly in JobFeedCacheService in memory.
+ * Eliminates continuous DB write storms to PostgreSQL while keeping feeds fresh.
  */
 @Service
 @RequiredArgsConstructor
@@ -35,6 +30,7 @@ public class JobIngestionScheduler {
     private final JobListingRepository jobListingRepository;
     private final CustomFeedIngestionService customFeedIngestionService;
     private final JobListingService jobListingService;
+    private final JobFeedCacheService jobFeedCacheService;
 
     private final AtomicBoolean isIngesting = new AtomicBoolean(false);
 
@@ -50,37 +46,33 @@ public class JobIngestionScheduler {
         }
     }
 
-    @Scheduled(fixedRateString = "${app.ingestion.interval-ms:300000}", initialDelay = 5000)
+    @Scheduled(fixedRateString = "${app.ingestion.interval-ms:300000}", initialDelay = 3000)
     public void ingestAll() {
         long start = System.currentTimeMillis();
-        log.info("[Scheduler] Starting scheduled 5-minute job ingestion sweep across {} adapters", adapters.size());
+        log.info("[Scheduler] Starting scheduled job ingestion sweep across {} adapters into in-memory cache", adapters.size());
         int total = ingestFromAllAdapters();
         jobListingService.invalidateCache();
         long elapsed = System.currentTimeMillis() - start;
-        log.info("[Scheduler] Completed scheduled ingestion: {} total listings upserted in {}ms", total, elapsed);
+        log.info("[Scheduler] Completed scheduled ingestion: {} total listings cached in {}ms (total in cache={})",
+                total, elapsed, jobFeedCacheService.size());
     }
 
     /**
-     * Non-blocking background trigger:
-     * - If database has 0 listings, immediately ingests a fast batch of 20 listings so initial feed is populated.
-     * - Runs the remaining platforms in the background without holding up the HTTP response thread.
+     * Non-blocking background trigger for manual refresh requests:
+     * Immediately returns to client while updating in-memory cache asynchronously.
      */
     public void triggerAsyncIngestion() {
-        log.info("[Async] triggerAsyncIngestion called, current listing count={}", jobListingRepository.count());
-        if (jobListingRepository.count() == 0) {
-            log.info("[Async] Database empty — running synchronous initial batch");
-            ensureInitialBatch();
-        }
-
+        log.info("[Async] triggerAsyncIngestion called, current in-memory cache size={}", jobFeedCacheService.size());
         CompletableFuture.runAsync(() -> {
             if (isIngesting.compareAndSet(false, true)) {
                 try {
                     long start = System.currentTimeMillis();
-                    log.info("[Async] Starting background async job ingestion sweep across all platforms");
+                    log.info("[Async] Starting background async job cache refresh sweep across all platforms");
                     int total = ingestFromAllAdapters();
                     jobListingService.invalidateCache();
                     long elapsed = System.currentTimeMillis() - start;
-                    log.info("[Async] Completed background ingestion: {} total listings in {}ms", total, elapsed);
+                    log.info("[Async] Completed background cache refresh: {} listings cached in {}ms (total in-memory={})",
+                            total, elapsed, jobFeedCacheService.size());
                 } catch (Exception e) {
                     log.error("[Async] Async job ingestion failed: {}", e.getMessage(), e);
                 } finally {
@@ -92,29 +84,7 @@ public class JobIngestionScheduler {
         });
     }
 
-    private void ensureInitialBatch() {
-        long start = System.currentTimeMillis();
-        log.info("[InitBatch] Populating initial batch of >=20 listings");
-        var criteria = new JobSourceAdapter.SearchCriteria(List.of(), List.of(), null, null);
-        int totalFetched = 0;
-        for (JobSourceAdapter adapter : adapters) {
-            try {
-                int fetched = ingestFromAdapter(adapter, criteria);
-                totalFetched += fetched;
-                if (totalFetched >= 20) {
-                    log.info("[InitBatch] Reached {} listings from {} — initial batch complete", totalFetched, adapter.getPlatformName());
-                    break;
-                }
-            } catch (Exception e) {
-                log.debug("[InitBatch] Adapter {} failed during initial batch: {}", adapter.getPlatformName(), e.getMessage());
-            }
-        }
-        jobListingService.invalidateCache();
-        long elapsed = System.currentTimeMillis() - start;
-        log.info("[InitBatch] Initial batch complete: {} listings in {}ms", totalFetched, elapsed);
-    }
-
-    /** Parallel, on-demand refresh across all adapters with batch DB persistence. */
+    /** Parallel ingestion across all adapters, saving directly to in-memory cache. */
     public int ingestFromAllAdapters() {
         log.debug("[Ingest] Running parallel ingestion across {} built-in adapters + custom feeds", adapters.size());
         var criteria = new JobSourceAdapter.SearchCriteria(List.of(), List.of(), null, null);
@@ -124,7 +94,8 @@ public class JobIngestionScheduler {
         long customStart = System.currentTimeMillis();
         int fromCustom = customFeedIngestionService.ingestAll();
         long customElapsed = System.currentTimeMillis() - customStart;
-        log.info("[Ingest] Adapters produced {} listings, custom feeds produced {} listings (custom took {}ms)", fromAdapters, fromCustom, customElapsed);
+        log.info("[Ingest] Adapters produced {} listings, custom feeds produced {} listings (custom took {}ms)",
+                fromAdapters, fromCustom, customElapsed);
         return fromAdapters + fromCustom;
     }
 
@@ -132,18 +103,14 @@ public class JobIngestionScheduler {
         String platform = adapter.getPlatformName();
         try {
             long fetchStart = System.currentTimeMillis();
-            log.debug("[Adapter] Fetching jobs from {}", platform);
             List<JobSourceAdapter.JobListingData> results = adapter.fetchJobs(criteria);
             long fetchElapsed = System.currentTimeMillis() - fetchStart;
             if (results == null || results.isEmpty()) {
                 log.info("[Adapter] {} returned 0 listings in {}ms", platform, fetchElapsed);
                 return 0;
             }
-            log.info("[Adapter] {} returned {} listings in {}ms — starting DB upsert", platform, results.size(), fetchElapsed);
-            long upsertStart = System.currentTimeMillis();
-            batchUpsert(platform, results);
-            long upsertElapsed = System.currentTimeMillis() - upsertStart;
-            log.info("[Adapter] {} — upserted {} listings into DB in {}ms (fetch={}ms, upsert={}ms, total={}ms)", platform, results.size(), upsertElapsed, fetchElapsed, upsertElapsed, fetchElapsed + upsertElapsed);
+            jobFeedCacheService.putListingData(platform, results);
+            log.info("[Adapter] {} returned and cached {} listings in {}ms", platform, results.size(), fetchElapsed);
             return results.size();
         } catch (Exception e) {
             log.warn("[Adapter] Job ingestion failed for platform {}: {}", platform, e.getMessage());
@@ -188,9 +155,5 @@ public class JobIngestionScheduler {
         }
 
         jobListingRepository.saveAll(toSaveMap.values());
-        log.debug("[Upsert] Saved {} listings for platform {} ({} new, {} updated)",
-                toSaveMap.size(), platformName,
-                toSaveMap.size() - existingMap.size(),
-                Math.min(existingMap.size(), toSaveMap.size()));
     }
 }

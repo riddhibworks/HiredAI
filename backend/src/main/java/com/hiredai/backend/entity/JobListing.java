@@ -8,7 +8,13 @@ import lombok.Setter;
 import java.time.Instant;
 
 @Entity
-@Table(name = "job_listings", uniqueConstraints = @UniqueConstraint(columnNames = {"platform", "externalJobId"}))
+@Table(name = "job_listings",
+       uniqueConstraints = @UniqueConstraint(columnNames = {"platform", "externalJobId"}),
+       indexes = {
+           @Index(name = "idx_job_listings_fetched_at", columnList = "fetchedAt DESC"),
+           @Index(name = "idx_job_listings_posted_at", columnList = "postedAt DESC"),
+           @Index(name = "idx_job_listings_platform", columnList = "platform")
+       })
 @Getter
 @Setter
 @NoArgsConstructor

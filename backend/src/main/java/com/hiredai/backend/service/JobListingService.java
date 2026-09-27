@@ -4,20 +4,18 @@ import com.hiredai.backend.dto.job.JobListingResponse;
 import com.hiredai.backend.entity.JobListing;
 import com.hiredai.backend.entity.Resume;
 import com.hiredai.backend.repository.JobListingRepository;
-import com.hiredai.backend.repository.JobListingSpecifications;
 import com.hiredai.backend.repository.ResumeRepository;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
-import java.util.Comparator;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.time.Instant;
+import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Service
@@ -25,82 +23,125 @@ import java.util.stream.Stream;
 @Slf4j
 public class JobListingService {
 
+    private final JobFeedCacheService jobFeedCacheService;
     private final JobListingRepository jobListingRepository;
     private final ResumeRepository resumeRepository;
     private final SavedJobService savedJobService;
     private final MatchingService matchingService;
 
-    // Fast in-memory cache for default page 0 feed (20 jobs)
-    private volatile CachedFeed defaultFeedCache = null;
-    private static final long CACHE_TTL_MS = 180_000; // 3 minutes
-
-    private record CachedFeed(long timestamp, Page<JobListingResponse> page) {}
+    @PostConstruct
+    public void init() {
+        try {
+            List<JobListing> dbListings = jobListingRepository.findAll();
+            if (!dbListings.isEmpty()) {
+                jobFeedCacheService.initFromList(dbListings);
+                log.info("[Feed] Pre-loaded {} listings from database into in-memory cache", dbListings.size());
+            }
+        } catch (Exception e) {
+            log.warn("[Feed] Failed to pre-load listings from database: {}", e.getMessage());
+        }
+    }
 
     public void invalidateCache() {
-        this.defaultFeedCache = null;
-        log.debug("[Feed] Default feed cache invalidated");
+        log.debug("[Feed] Cache invalidation requested");
     }
 
     public Page<JobListingResponse> search(String userId, String keyword, String location, String platform,
                                             Double minMatchScore, String sort, int page, int size) {
-        boolean isDefaultPageZero = page == 0
-                && (keyword == null || keyword.isBlank())
-                && (location == null || location.isBlank())
-                && (platform == null || platform.isBlank())
-                && minMatchScore == null
-                && ("relevance".equals(sort) || sort == null || sort.isBlank())
-                && userId == null;
+        long start = System.currentTimeMillis();
+        List<JobListing> allListings = jobFeedCacheService.getAllListings();
 
-        if (isDefaultPageZero) {
-            CachedFeed cached = defaultFeedCache;
-            if (cached != null && (System.currentTimeMillis() - cached.timestamp() < CACHE_TTL_MS)) {
-                log.debug("[Feed] Cache HIT for default page 0 — returning {} jobs (age={}ms)", cached.page().getContent().size(), System.currentTimeMillis() - cached.timestamp());
-                return cached.page();
+        // If in-memory cache is still empty, fallback to DB
+        if (allListings.isEmpty()) {
+            allListings = jobListingRepository.findAll();
+            if (!allListings.isEmpty()) {
+                jobFeedCacheService.initFromList(allListings);
             }
-            log.debug("[Feed] Cache MISS for default page 0 — querying database");
         }
 
-        Specification<JobListing> spec = Specification.allOf(Stream.of(
-                        JobListingSpecifications.keyword(keyword),
-                        JobListingSpecifications.location(location),
-                        JobListingSpecifications.platform(platform))
-                .filter(Objects::nonNull)
-                .toList());
+        Stream<JobListing> stream = allListings.stream();
 
-        Page<JobListing> results = jobListingRepository.findAll(spec, PageRequest.of(page, size, resolveSort(sort)));
+        // 1. Platform filter
+        if (platform != null && !platform.isBlank()) {
+            String pLower = platform.trim();
+            stream = stream.filter(j -> j.getPlatform() != null && j.getPlatform().equalsIgnoreCase(pLower));
+        }
+
+        // 2. Location filter
+        if (location != null && !location.isBlank()) {
+            String locLower = location.toLowerCase().trim();
+            stream = stream.filter(j -> j.getLocation() != null && j.getLocation().toLowerCase().contains(locLower));
+        }
+
+        // 3. Keyword filter
+        if (keyword != null && !keyword.isBlank()) {
+            String[] tokens = keyword.toLowerCase().trim().split("[,\\s]+");
+            stream = stream.filter(j -> {
+                String fullText = (j.getTitle() != null ? j.getTitle().toLowerCase() : "") + " " +
+                        (j.getCompany() != null ? j.getCompany().toLowerCase() : "") + " " +
+                        (j.getDescription() != null ? j.getDescription().toLowerCase() : "");
+                for (String tok : tokens) {
+                    if (!tok.isBlank() && !fullText.contains(tok)) {
+                        return false;
+                    }
+                }
+                return true;
+            });
+        }
 
         String resumeText = defaultResumeText(userId);
         Set<String> savedIds = savedJobService.savedJobIdsForUser(userId);
         Set<String> appliedIds = savedJobService.appliedJobIdsForUser(userId);
 
-        List<JobListingResponse> content = results.getContent().stream()
-                .map(listing -> toResponse(listing, resumeText, savedIds, appliedIds))
-                .filter(r -> minMatchScore == null || (r.matchScore() != null && r.matchScore() >= minMatchScore))
-                .collect(java.util.stream.Collectors.toCollection(java.util.ArrayList::new));
+        // 4. Map & match scoring
+        Stream<JobListingResponse> responseStream = stream.map(listing ->
+                toResponse(listing, resumeText, savedIds, appliedIds));
 
-        if ("relevance".equals(sort) || sort == null || sort.isBlank()) {
-            content.sort(Comparator.comparing((JobListingResponse r) -> r.matchScore() != null ? r.matchScore() : 0.0).reversed());
+        // 5. Min match score filter
+        if (minMatchScore != null) {
+            responseStream = responseStream.filter(r -> r.matchScore() != null && r.matchScore() >= minMatchScore);
         }
 
-        Page<JobListingResponse> pageResult = new org.springframework.data.domain.PageImpl<>(content, results.getPageable(), results.getTotalElements());
-        if (isDefaultPageZero) {
-            defaultFeedCache = new CachedFeed(System.currentTimeMillis(), pageResult);
-            log.debug("[Feed] Cached default page 0 with {} jobs", content.size());
+        List<JobListingResponse> matched = responseStream.collect(Collectors.toCollection(ArrayList::new));
+
+        // 6. In-memory sorting
+        if ("date".equalsIgnoreCase(sort)) {
+            matched.sort(Comparator.comparing((JobListingResponse r) -> r.postedAt() != null ? r.postedAt() : Instant.EPOCH).reversed());
+        } else if ("salary".equalsIgnoreCase(sort)) {
+            matched.sort(Comparator.comparing((JobListingResponse r) -> r.salaryRange() != null ? r.salaryRange() : "").reversed());
+        } else { // "relevance" or default
+            matched.sort(Comparator.comparing((JobListingResponse r) -> r.matchScore() != null ? r.matchScore() : 0.0).reversed());
         }
-        log.debug("[Feed] Search returned {} results from {} DB rows (keyword={}, platform={}, page={})", content.size(), results.getTotalElements(), keyword, platform, page);
-        return pageResult;
+
+        int total = matched.size();
+        int fromIndex = Math.min(page * size, total);
+        int toIndex = Math.min(fromIndex + size, total);
+        List<JobListingResponse> pageContent = matched.subList(fromIndex, toIndex);
+
+        long elapsed = System.currentTimeMillis() - start;
+        log.info("[Feed] In-memory search returned {}/{} jobs in {}ms (page={}, size={}, sort={})",
+                pageContent.size(), total, elapsed, page, size, sort);
+
+        return new PageImpl<>(pageContent, PageRequest.of(page, size), total);
     }
 
     public JobListingResponse getOrThrow(String userId, String id) {
-        log.debug("[Feed] getOrThrow id={}, userId={}", id, userId);
-        JobListing listing = jobListingRepository.findById(id)
+        JobListing listing = jobFeedCacheService.getById(id)
+                .or(() -> jobListingRepository.findById(id))
                 .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
                         org.springframework.http.HttpStatus.NOT_FOUND, "Job listing not found"));
         String resumeText = defaultResumeText(userId);
         Set<String> savedIds = savedJobService.savedJobIdsForUser(userId);
         Set<String> appliedIds = savedJobService.appliedJobIdsForUser(userId);
-        log.debug("[Feed] Found listing id={}: '{}' by {} on {}", id, listing.getTitle(), listing.getCompany(), listing.getPlatform());
         return toResponse(listing, resumeText, savedIds, appliedIds);
+    }
+
+    public List<String> getAvailablePlatforms() {
+        List<String> cached = jobFeedCacheService.getAvailablePlatforms();
+        if (!cached.isEmpty()) {
+            return cached;
+        }
+        return List.of("Arbeitnow", "Himalayas", "Jobicy", "RemoteOK", "Remotive", "WeWorkRemotely");
     }
 
     private JobListingResponse toResponse(JobListing listing, String resumeText, Set<String> savedIds, Set<String> appliedIds) {
@@ -114,16 +155,6 @@ public class JobListingService {
                 listing.getTitle(), listing.getCompany(), listing.getLocation(), listing.getDescription(),
                 listing.getSalaryRange(), matchScore, listing.getPostedAt(), listing.getSourceUrl(),
                 savedIds.contains(listing.getId()), appliedIds.contains(listing.getId()));
-    }
-
-    private Sort resolveSort(String sort) {
-        if ("date".equals(sort)) {
-            return Sort.by(Sort.Direction.DESC, "postedAt");
-        }
-        if ("salary".equals(sort)) {
-            return Sort.by(Sort.Direction.DESC, "salaryRange");
-        }
-        return Sort.by(Sort.Direction.DESC, "fetchedAt");
     }
 
     private String defaultResumeText(String userId) {

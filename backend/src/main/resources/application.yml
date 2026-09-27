@@ -13,7 +13,11 @@ spring:
     open-in-view: false
     properties:
       hibernate:
-        format_sql: true
+        format_sql: false
+        jdbc:
+          batch_size: 50
+        order_inserts: true
+        order_updates: true
   data:
     redis:
       host: ${REDIS_HOST:localhost}

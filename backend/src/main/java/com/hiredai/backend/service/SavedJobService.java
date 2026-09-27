@@ -6,6 +6,7 @@ import com.hiredai.backend.entity.SavedJob;
 import com.hiredai.backend.repository.JobListingRepository;
 import com.hiredai.backend.repository.SavedJobRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,14 +19,23 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class SavedJobService {
 
     private final SavedJobRepository savedJobRepository;
     private final JobListingRepository jobListingRepository;
+    private final JobFeedCacheService jobFeedCacheService;
 
+    @Transactional
     public SavedJobResponse save(String userId, String jobListingId) {
         JobListing listing = jobListingRepository.findById(jobListingId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Job listing not found"));
+                .orElseGet(() -> {
+                    JobListing cached = jobFeedCacheService.getById(jobListingId)
+                            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Job listing not found"));
+                    log.info("[SavedJob] Persisting job {} ('{}') to Postgres on demand", jobListingId, cached.getTitle());
+                    return jobListingRepository.save(cached);
+                });
+
         SavedJob saved = savedJobRepository.findByUserIdAndJobListingId(userId, jobListingId)
                 .orElseGet(() -> savedJobRepository.save(new SavedJob(userId, jobListingId)));
         return SavedJobResponse.from(saved, listing);
@@ -36,9 +46,16 @@ public class SavedJobService {
         savedJobRepository.deleteByUserIdAndJobListingId(userId, jobListingId);
     }
 
+    @Transactional
     public SavedJobResponse markApplied(String userId, String jobListingId, boolean applied, String notes) {
         JobListing listing = jobListingRepository.findById(jobListingId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Job listing not found"));
+                .orElseGet(() -> {
+                    JobListing cached = jobFeedCacheService.getById(jobListingId)
+                            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Job listing not found"));
+                    log.info("[SavedJob] Persisting job {} ('{}') to Postgres on demand (marked applied)", jobListingId, cached.getTitle());
+                    return jobListingRepository.save(cached);
+                });
+
         SavedJob saved = savedJobRepository.findByUserIdAndJobListingId(userId, jobListingId)
                 .orElseGet(() -> new SavedJob(userId, jobListingId));
         saved.setAppliedManually(applied);
@@ -51,12 +68,20 @@ public class SavedJobService {
 
     public List<SavedJobResponse> listForUser(String userId) {
         List<SavedJob> savedJobs = savedJobRepository.findByUserId(userId);
+        List<String> ids = savedJobs.stream().map(SavedJob::getJobListingId).toList();
         Map<String, JobListing> listingsById = jobListingRepository
-                .findAllById(savedJobs.stream().map(SavedJob::getJobListingId).toList())
+                .findAllById(ids)
                 .stream()
                 .collect(Collectors.toMap(JobListing::getId, listing -> listing));
+
         return savedJobs.stream()
-                .map(saved -> SavedJobResponse.from(saved, listingsById.get(saved.getJobListingId())))
+                .map(saved -> {
+                    JobListing listing = listingsById.get(saved.getJobListingId());
+                    if (listing == null) {
+                        listing = jobFeedCacheService.getById(saved.getJobListingId()).orElse(null);
+                    }
+                    return SavedJobResponse.from(saved, listing);
+                })
                 .toList();
     }
 

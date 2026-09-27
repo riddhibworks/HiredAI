@@ -44,6 +44,7 @@ public class CustomFeedIngestionService {
 
     private final JobSourceRepository jobSourceRepository;
     private final JobListingRepository jobListingRepository;
+    private final JobFeedCacheService jobFeedCacheService;
     private final FeedUrlValidator feedUrlValidator;
     private final ObjectMapper objectMapper;
 
@@ -68,8 +69,12 @@ public class CustomFeedIngestionService {
             if (parsed.isEmpty()) {
                 return 0;
             }
-            batchUpsert(source.getName(), parsed);
-            log.info("Ingested {} listings from custom source {}", parsed.size(), source.getName());
+            List<com.hiredai.backend.adapter.JobSourceAdapter.JobListingData> listingData = parsed.stream()
+                    .map(p -> new com.hiredai.backend.adapter.JobSourceAdapter.JobListingData(
+                            p.externalId(), p.title(), p.company(), p.location(), p.description(), null, p.sourceUrl(), p.postedAt()))
+                    .toList();
+            jobFeedCacheService.putListingData(source.getName(), listingData);
+            log.info("Ingested and cached {} listings in-memory from custom source {}", parsed.size(), source.getName());
             return parsed.size();
         } catch (Exception e) {
             log.warn("Custom feed ingestion failed for source {}: {}", source.getName(), e.getMessage());
