@@ -38,6 +38,18 @@ public class JobIngestionScheduler {
 
     private final AtomicBoolean isIngesting = new AtomicBoolean(false);
 
+    @jakarta.annotation.PostConstruct
+    @Transactional
+    public void cleanupLegacyPlatforms() {
+        try {
+            jobListingRepository.deleteByPlatform("Google Jobs");
+            jobListingService.invalidateCache();
+            log.info("Cleaned up any legacy Google Jobs listings from database");
+        } catch (Exception e) {
+            log.warn("Could not clean up legacy Google Jobs entries: {}", e.getMessage());
+        }
+    }
+
     @Scheduled(fixedRateString = "${app.ingestion.interval-ms:300000}", initialDelay = 5000)
     public void ingestAll() {
         log.info("Starting scheduled 5-minute job ingestion sweep across all adapters");

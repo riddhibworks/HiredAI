@@ -55,7 +55,6 @@ const SAMPLE_FEATURED_JOBS = [
 ];
 
 const SOURCE_PLATFORMS = [
-  'Google Jobs',
   'WeWorkRemotely',
   'RemoteOK',
   'Himalayas',

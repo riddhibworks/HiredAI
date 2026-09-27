@@ -9,4 +9,5 @@ import java.util.Optional;
 public interface JobListingRepository extends JpaRepository<JobListing, String>, JpaSpecificationExecutor<JobListing> {
     Optional<JobListing> findByPlatformAndExternalJobId(String platform, String externalJobId);
     java.util.List<JobListing> findByPlatformAndExternalJobIdIn(String platform, java.util.Collection<String> externalJobIds);
+    void deleteByPlatform(String platform);
 }
