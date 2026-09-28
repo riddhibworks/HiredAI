@@ -46,6 +46,7 @@ import TuneIcon from '@mui/icons-material/Tune';
 
 import { jobsApi } from '../api/jobs';
 import type { JobListingResponse } from '../types/api';
+import FeedScrollNavigator from '../components/FeedScrollNavigator';
 
 const PAGE_SIZE = 20;
 
@@ -1226,6 +1227,9 @@ export default function JobFeedPage() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Floating 1-Click Top & Bottom Navigator */}
+      <FeedScrollNavigator enabled={jobs.length > 0} />
     </Box>
   );
 }

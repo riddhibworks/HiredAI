@@ -57,6 +57,10 @@ export default function AppLayout() {
     }
   }, [token, savedJobsLoadedAt, setSavedJobs]);
 
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
+
   // Find matching nav path or default to '/' exact check
   const currentTab = NAV_ITEMS.find((item) => {
     if (item.path === '/') return location.pathname === '/';

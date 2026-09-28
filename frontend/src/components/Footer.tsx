@@ -37,6 +37,11 @@ export default function Footer({
     { label: 'Job Sources', path: '/job-sources' },
   ];
 
+  const handleNavClick = (path: string) => {
+    navigate(path);
+    window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+  };
+
   return (
     <Box
       component="footer"
@@ -57,7 +62,7 @@ export default function Footer({
             <Box sx={{ maxWidth: 440 }}>
               {/* Brand Logo */}
               <Box
-                onClick={() => navigate('/')}
+                onClick={() => handleNavClick('/')}
                 sx={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -168,7 +173,7 @@ export default function Footer({
               {navLinks.map((link) => (
                 <Box
                   key={link.path}
-                  onClick={() => navigate(link.path)}
+                  onClick={() => handleNavClick(link.path)}
                   sx={{
                     display: 'inline-flex',
                     alignItems: 'center',
