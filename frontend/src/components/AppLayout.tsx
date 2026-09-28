@@ -34,6 +34,7 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import { useAuthStore } from '../store/authStore';
 import { useJobStore } from '../store/jobStore';
 import { savedJobsApi } from '../api/savedJobs';
+import Footer from './Footer';
 
 const NAV_ITEMS = [
   { label: 'Home', path: '/', icon: <HomeIcon fontSize="small" /> },
@@ -456,6 +457,8 @@ export default function AppLayout() {
       <Container maxWidth="lg" sx={{ mt: { xs: 2.5, sm: 4 }, mb: 6, flexGrow: 1, px: { xs: 2, sm: 3 } }}>
         <Outlet />
       </Container>
+
+      <Footer />
     </Box>
   );
 }
