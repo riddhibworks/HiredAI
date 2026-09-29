@@ -5,7 +5,6 @@ import com.hiredai.backend.entity.JobListing;
 import com.hiredai.backend.repository.JobListingRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,7 +16,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * Periodically pulls listings from public job-source adapters and custom feeds,
+ * Pulls listings from public job-source adapters and custom feeds on demand,
  * caching them directly in JobFeedCacheService in memory.
  * Eliminates continuous DB write storms to PostgreSQL while keeping feeds fresh.
  */
@@ -44,17 +43,6 @@ public class JobIngestionScheduler {
         } catch (Exception e) {
             log.warn("Could not clean up legacy Google Jobs entries: {}", e.getMessage());
         }
-    }
-
-    @Scheduled(fixedRateString = "${app.ingestion.interval-ms:300000}", initialDelay = 3000)
-    public void ingestAll() {
-        long start = System.currentTimeMillis();
-        log.info("[Scheduler] Starting scheduled job ingestion sweep across {} adapters into in-memory cache", adapters.size());
-        int total = ingestFromAllAdapters();
-        jobListingService.invalidateCache();
-        long elapsed = System.currentTimeMillis() - start;
-        log.info("[Scheduler] Completed scheduled ingestion: {} total listings cached in {}ms (total in cache={})",
-                total, elapsed, jobFeedCacheService.size());
     }
 
     /**

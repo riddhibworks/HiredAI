@@ -24,8 +24,8 @@
   - **Save-on-Demand**: A job is persisted permanently to PostgreSQL only when a candidate bookmarks or applies to it (`SavedJobService`).
   - Stores candidate accounts, parsed resume JSON, application history, and custom feed configurations with full ACID guarantees, composite indexes (`fetchedAt DESC`, `postedAt DESC`, `platform`), and Hibernate JDBC batching (`batch_size: 50`).
 
-### **Background Task Execution: Spring Scheduling Framework**
-- **Why `@Scheduled` & `@Async`?**: Drives periodic automated background feed ingestion sweeps ([`JobIngestionScheduler.java`](file:///Users/riddhi/Desktop/Vesis/HiredAI/backend/src/main/java/com/hiredai/backend/service/JobIngestionScheduler.java)) and non-blocking on-demand refresh triggers directly into cache without database lock contention.
+### **Background Task Execution: Spring Async Framework**
+- **Why `@Async`?**: Drives non-blocking on-demand refresh triggers ([`JobIngestionScheduler.java`](file:///Users/riddhi/Desktop/Vesis/HiredAI/backend/src/main/java/com/hiredai/backend/service/JobIngestionScheduler.java)) directly into cache without database lock contention.
 
 ### **Document Extraction & Processing: Apache Tika & PDFBox**
 - **Why Apache Tika & PDFBox?**: Provides robust, multi-format text extraction from candidate resumes (PDF, DOCX, DOC). Converts unstructured document streams into structured text for tokenized skill matching algorithms.
